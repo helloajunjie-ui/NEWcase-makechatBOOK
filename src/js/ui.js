@@ -63,12 +63,12 @@ function processInput(text) {
     currentRaw = raw;
     currentUIF = parseJSON(raw);
     const fmt = currentUIF._sourceFormat;
-    const fmtNames = { chunchao: '春潮', fengyue: '风月', miss: 'MISS' };
+    const fmtNames = { chunchao: '春潮', fengyue: '风月', miss: 'MISS', rili: '日礼' };
     const lines = text.split('\n').length;
     inputCount.textContent = lines + ' 行 · ' + text.length + ' 字符';
     setStatus('✅ 已识别 ' + (fmtNames[fmt] || fmt) + ' 格式，' + currentUIF.worldBook.length + ' 条世界书', 'ok');
     renderOutput();
-    dbAdd(currentUIF).then(() => { renderLibList(); }).catch(() => {});
+    dbAdd(currentUIF).then(() => { renderLibList(); }).catch(e => console.error('❌ 剧本自动入库失败:', e));
   } catch (e) {
     currentUIF = null;
     currentRaw = null;
@@ -96,11 +96,14 @@ function switchView(viewName) {
   }
 }
 
+// ── 路由中枢：所有导航按钮统一绑定在此 ──
 $('nav-converter').addEventListener('click', () => switchView('converter'));
 $('nav-library').addEventListener('click', () => switchView('library'));
 $('nav-generator').addEventListener('click', () => switchView('generator'));
 $('nav-chat').addEventListener('click', () => switchView('chat'));
-
+$('nav-char-creator').addEventListener('click', () => switchView('char-creator'));
+$('nav-world-builder').addEventListener('click', () => switchView('world-builder'));
+$('nav-power-builder').addEventListener('click', () => switchView('power-builder'));
 // ═══════════════════════════════════════
 //  11. 剧本库 · 渲染列表 & 详情
 // ═══════════════════════════════════════
@@ -239,9 +242,10 @@ async function showDetailInPanel(id) {
     html += '<div class="modal-section-title">🌐 专属宣发页</div>';
     if (hasLandingPage) {
       html += '<div class="modal-field"><span class="modal-field-label">状态</span><span class="modal-field-value" style="color:var(--accent-primary)">✅ 已铸造</span></div>';
-      html += '<div style="margin-top:8px;display:flex;gap:8px">';
+      html += '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">';
       html += '<button class="btn btn-sm" id="btnPreviewHtml" style="background:var(--accent-primary);color:#fff">👁 预览</button>';
       html += '<button class="btn btn-sm btn-secondary" id="btnDownloadHtml">⬇ 下载</button>';
+      html += '<button class="btn btn-sm btn-secondary" id="btnViewSource">📄 查看源码</button>';
       html += '<button class="btn btn-sm btn-secondary" id="btnRegenHtml">🔄 重新铸造</button>';
       html += '</div>';
     } else {
@@ -396,6 +400,14 @@ async function showDetailInPanel(id) {
     if (regenBtn) {
       regenBtn.addEventListener('click', () => {
         generateLandingPage(id);
+      });
+    }
+
+    // Landing page: view source (open modal with editable textarea + copy)
+    const viewSourceBtn = libDetail.querySelector('#btnViewSource');
+    if (viewSourceBtn && entry.htmlLandingPage) {
+      viewSourceBtn.addEventListener('click', () => {
+        openSourceEditor(entry.htmlLandingPage, id);
       });
     }
   } catch (e) {
@@ -1118,6 +1130,142 @@ document.addEventListener('DOMContentLoaded', function() {
   if (dialog) {
     dialog.addEventListener('click', function(e) {
       if (e.target === dialog) dialog.close();
+    });
+  }
+});
+
+// ═══════════════════════════════════════
+//  13f. 宣发页源码查看/编辑弹窗
+// ═══════════════════════════════════════
+var _sourceEditorScriptId = null;
+
+function openSourceEditor(htmlContent, scriptId) {
+  var dialog = document.getElementById('source-editor-dialog');
+  var textarea = document.getElementById('source-editor-textarea');
+  if (!dialog || !textarea) return;
+
+  textarea.value = htmlContent;
+  _sourceEditorScriptId = scriptId;
+  dialog.showModal();
+}
+
+// ── 绑定源码编辑器事件 ──
+document.addEventListener('DOMContentLoaded', function() {
+  var dialog = document.getElementById('source-editor-dialog');
+  var textarea = document.getElementById('source-editor-textarea');
+  var btnClose = document.getElementById('btn-close-source-editor');
+  var btnCopy = document.getElementById('btn-source-copy');
+  var btnFormat = document.getElementById('btn-source-format');
+  var btnSave = document.getElementById('btn-source-save');
+
+  if (!dialog || !textarea) return;
+
+  // 关闭
+  if (btnClose) {
+    btnClose.addEventListener('click', function() { dialog.close(); });
+  }
+
+  // 点击外部关闭
+  dialog.addEventListener('click', function(e) {
+    if (e.target === dialog) dialog.close();
+  });
+
+  // 一键复制
+  if (btnCopy) {
+    btnCopy.addEventListener('click', function() {
+      var text = textarea.value;
+      navigator.clipboard.writeText(text).then(function() {
+        var orig = btnCopy.textContent;
+        btnCopy.textContent = '✅ 已复制';
+        btnCopy.style.background = '#22c55e';
+        btnCopy.style.color = '#fff';
+        setTimeout(function() {
+          btnCopy.textContent = orig;
+          btnCopy.style.background = '';
+          btnCopy.style.color = '';
+        }, 1500);
+      }).catch(function() {
+        // fallback
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        btnCopy.textContent = '✅ 已复制';
+        setTimeout(function() { btnCopy.textContent = '📋 一键复制'; }, 1500);
+      });
+    });
+  }
+
+  // 格式化 HTML
+  if (btnFormat) {
+    btnFormat.addEventListener('click', function() {
+      try {
+        // 简单的缩进格式化：按标签换行 + 缩进
+        var formatted = textarea.value
+          .replace(/>\s*</g, '>\n<')
+          .split('\n')
+          .map(function(line) {
+            var indent = 0;
+            if (/^<\/\w/.test(line.trim())) indent = -1;
+            else if (/^<\w/.test(line.trim())) indent = 0;
+            var spaces = '';
+            // 计算当前缩进层级（基于闭合标签）
+            var trimmed = line.trim();
+            if (/^<\/\w/.test(trimmed)) {
+              // 闭合标签减少缩进
+              var closeCount = (trimmed.match(/<\//g) || []).length;
+              var openCount = (trimmed.match(/<[^/]/g) || []).length;
+              var netIndent = openCount - closeCount;
+              // 简单处理：闭合标签前退一格
+              spaces = '  '.repeat(Math.max(0, netIndent));
+            } else if (/^<\w/.test(trimmed)) {
+              spaces = '';
+            }
+            return spaces + trimmed;
+          })
+          .join('\n')
+          .replace(/\n{3,}/g, '\n\n'); // 去除多余空行
+        textarea.value = formatted;
+        setStatus('🔧 HTML 已格式化', 'ok');
+      } catch (e) {
+        setStatus('❌ 格式化失败: ' + e.message, 'err');
+      }
+    });
+  }
+
+  // 保存修改
+  if (btnSave) {
+    btnSave.addEventListener('click', async function() {
+      var newHtml = textarea.value.trim();
+      if (!newHtml) {
+        setStatus('❌ 源码不能为空', 'err');
+        return;
+      }
+      var id = _sourceEditorScriptId;
+      if (!id) {
+        setStatus('❌ 剧本 ID 丢失', 'err');
+        return;
+      }
+
+      // 更新 DB
+      await dbUpdate(id, { htmlLandingPage: newHtml });
+
+      // 同步更新 uif.landingPage
+      var entry = await dbGet(id);
+      if (entry && entry.uif) {
+        entry.uif.landingPage = newHtml;
+        await dbUpdate(id, { uif: entry.uif });
+      }
+
+      // 刷新详情面板
+      if (viewingLibId === id) {
+        showDetailInPanel(id);
+      }
+
+      dialog.close();
+      setStatus('✅ 宣发页源码已保存', 'ok');
     });
   }
 });

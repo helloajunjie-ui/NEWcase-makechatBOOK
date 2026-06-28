@@ -162,11 +162,6 @@ $('char-seed-input').addEventListener('keydown', function(e) {
   }
 });
 
-// 捏人视图切换
-$('nav-char-creator').addEventListener('click', function() {
-  switchView('char-creator');
-});
-
 // ═══════════════════════════════════════
 //  16.5 世界观构建 · AI World Builder
 // ═══════════════════════════════════════
@@ -334,11 +329,6 @@ $('world-seed-input').addEventListener('keydown', function(e) {
   }
 });
 
-// 世界观视图切换
-$('nav-world-builder').addEventListener('click', function() {
-  switchView('world-builder');
-});
-
 // ═══════════════════════════════════════
 //  16.75 体系工坊 · Power System Builder
 // ═══════════════════════════════════════
@@ -496,11 +486,6 @@ $('power-seed-input').addEventListener('keydown', function(e) {
     e.preventDefault();
     generatePowerSystem();
   }
-});
-
-// 体系视图切换
-$('nav-power-builder').addEventListener('click', function() {
-  switchView('power-builder');
 });
 
 // ═══════════════════════════════════════

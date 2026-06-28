@@ -1290,3 +1290,17 @@
 /* --- AI 配置面板强制 Tab 样式（兜底） --- */
 .ai-tab-panel{display:none !important;}
 .ai-tab-panel.active{display:block !important;animation:fadeIn .2s ease;}
+
+/* ── 宣发页源码编辑器弹窗 ── */
+#source-editor-dialog textarea{
+  outline:none;
+  transition:border-color 0.2s ease;
+}
+#source-editor-dialog textarea:focus{
+  border-color:var(--accent-primary) !important;
+  box-shadow:0 0 0 2px var(--accent-glow);
+}
+#source-editor-dialog textarea::selection{
+  background:var(--accent-primary);
+  color:#fff;
+}

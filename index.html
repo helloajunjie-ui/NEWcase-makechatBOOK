@@ -1524,6 +1524,20 @@ a:hover{text-decoration:underline}
 .ai-tab-panel{display:none !important;}
 .ai-tab-panel.active{display:block !important;animation:fadeIn .2s ease;}
 
+/* ── 宣发页源码编辑器弹窗 ── */
+#source-editor-dialog textarea{
+  outline:none;
+  transition:border-color 0.2s ease;
+}
+#source-editor-dialog textarea:focus{
+  border-color:var(--accent-primary) !important;
+  box-shadow:0 0 0 2px var(--accent-glow);
+}
+#source-editor-dialog textarea::selection{
+  background:var(--accent-primary);
+  color:#fff;
+}
+
 </style>
 
 </head>
@@ -1949,6 +1963,26 @@ a:hover{text-decoration:underline}
     <div style="margin-top: 12px; display: flex; justify-content: space-between; gap: 12px;">
       <button id="btn-test-ai" style="padding: 10px 16px; background: transparent; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'">🔌 测试连接</button>
       <button id="btn-save-ai" style="padding: 10px 24px; background: var(--accent-primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; flex: 1; transition: all 0.2s; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">💾 保存配置</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- ═══════════════════════════════════════
+     弹窗：宣发页源码查看/编辑
+     ═══════════════════════════════════════ -->
+<dialog id="source-editor-dialog" class="ai-dialog" style="background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; width: 680px; max-width: 90vw; box-shadow: 0 10px 40px rgba(0,0,0,0.2); color: var(--text-main);">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <h3 style="margin:0;font-size:15px;font-weight:600">📄 宣发页源码</h3>
+    <button id="btn-close-source-editor" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;padding:4px 8px;border-radius:4px;transition:var(--transition)" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'">✕</button>
+  </div>
+  <div class="dialog-content">
+    <textarea id="source-editor-textarea" spellcheck="false" style="width:100%;min-height:360px;max-height:60vh;background:var(--bg-body);color:var(--text-main);border:1px solid var(--border-color);border-radius:8px;padding:16px;font-family:var(--mono);font-size:12px;line-height:1.6;resize:vertical;tab-size:2;white-space:pre;overflow:auto"></textarea>
+    <div style="margin-top:12px;display:flex;justify-content:space-between;gap:12px;">
+      <div style="display:flex;gap:8px">
+        <button id="btn-source-copy" style="padding:10px 20px;background:var(--bg-hover);color:var(--text-main);border:1px solid var(--border-color);border-radius:6px;cursor:pointer;font-size:13px;transition:all 0.2s" onmouseover="this.style.background='var(--accent-primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--bg-hover)';this.style.color='var(--text-main)'">📋 一键复制</button>
+        <button id="btn-source-format" style="padding:10px 20px;background:var(--bg-hover);color:var(--text-main);border:1px solid var(--border-color);border-radius:6px;cursor:pointer;font-size:13px;transition:all 0.2s" onmouseover="this.style.background='var(--accent-primary)';this.style.color='#fff'" onmouseout="this.style.background='var(--bg-hover)';this.style.color='var(--text-main)'">🔧 格式化</button>
+      </div>
+      <button id="btn-source-save" style="padding:10px 24px;background:var(--accent-primary);color:white;border:none;border-radius:6px;cursor:pointer;font-weight:bold;transition:all 0.2s;box-shadow:0 4px 15px rgba(139,92,246,0.3)" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">💾 保存修改</button>
     </div>
   </div>
 </dialog>
@@ -2633,6 +2667,7 @@ function renderFengyue(uif) {
   }, null, 2);
 }
 
+// [Architecture Note]: rili 格式导出时 id 和 authorId 置空，这是 UIF 归一化格式的有意设计（防隐私泄露与冗余），非 Bug。
 function renderRili(uif) {
   const { meta, assets, prompts, extras } = uif;
   return JSON.stringify({
@@ -2947,12 +2982,12 @@ function processInput(text) {
     currentRaw = raw;
     currentUIF = parseJSON(raw);
     const fmt = currentUIF._sourceFormat;
-    const fmtNames = { chunchao: '春潮', fengyue: '风月', miss: 'MISS' };
+    const fmtNames = { chunchao: '春潮', fengyue: '风月', miss: 'MISS', rili: '日礼' };
     const lines = text.split('\n').length;
     inputCount.textContent = lines + ' 行 · ' + text.length + ' 字符';
     setStatus('✅ 已识别 ' + (fmtNames[fmt] || fmt) + ' 格式，' + currentUIF.worldBook.length + ' 条世界书', 'ok');
     renderOutput();
-    dbAdd(currentUIF).then(() => { renderLibList(); }).catch(() => {});
+    dbAdd(currentUIF).then(() => { renderLibList(); }).catch(e => console.error('❌ 剧本自动入库失败:', e));
   } catch (e) {
     currentUIF = null;
     currentRaw = null;
@@ -2980,11 +3015,14 @@ function switchView(viewName) {
   }
 }
 
+// ── 路由中枢：所有导航按钮统一绑定在此 ──
 $('nav-converter').addEventListener('click', () => switchView('converter'));
 $('nav-library').addEventListener('click', () => switchView('library'));
 $('nav-generator').addEventListener('click', () => switchView('generator'));
 $('nav-chat').addEventListener('click', () => switchView('chat'));
-
+$('nav-char-creator').addEventListener('click', () => switchView('char-creator'));
+$('nav-world-builder').addEventListener('click', () => switchView('world-builder'));
+$('nav-power-builder').addEventListener('click', () => switchView('power-builder'));
 // ═══════════════════════════════════════
 //  11. 剧本库 · 渲染列表 & 详情
 // ═══════════════════════════════════════
@@ -3123,9 +3161,10 @@ async function showDetailInPanel(id) {
     html += '<div class="modal-section-title">🌐 专属宣发页</div>';
     if (hasLandingPage) {
       html += '<div class="modal-field"><span class="modal-field-label">状态</span><span class="modal-field-value" style="color:var(--accent-primary)">✅ 已铸造</span></div>';
-      html += '<div style="margin-top:8px;display:flex;gap:8px">';
+      html += '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">';
       html += '<button class="btn btn-sm" id="btnPreviewHtml" style="background:var(--accent-primary);color:#fff">👁 预览</button>';
       html += '<button class="btn btn-sm btn-secondary" id="btnDownloadHtml">⬇ 下载</button>';
+      html += '<button class="btn btn-sm btn-secondary" id="btnViewSource">📄 查看源码</button>';
       html += '<button class="btn btn-sm btn-secondary" id="btnRegenHtml">🔄 重新铸造</button>';
       html += '</div>';
     } else {
@@ -3280,6 +3319,14 @@ async function showDetailInPanel(id) {
     if (regenBtn) {
       regenBtn.addEventListener('click', () => {
         generateLandingPage(id);
+      });
+    }
+
+    // Landing page: view source (open modal with editable textarea + copy)
+    const viewSourceBtn = libDetail.querySelector('#btnViewSource');
+    if (viewSourceBtn && entry.htmlLandingPage) {
+      viewSourceBtn.addEventListener('click', () => {
+        openSourceEditor(entry.htmlLandingPage, id);
       });
     }
   } catch (e) {
@@ -4006,6 +4053,142 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
+// ═══════════════════════════════════════
+//  13f. 宣发页源码查看/编辑弹窗
+// ═══════════════════════════════════════
+var _sourceEditorScriptId = null;
+
+function openSourceEditor(htmlContent, scriptId) {
+  var dialog = document.getElementById('source-editor-dialog');
+  var textarea = document.getElementById('source-editor-textarea');
+  if (!dialog || !textarea) return;
+
+  textarea.value = htmlContent;
+  _sourceEditorScriptId = scriptId;
+  dialog.showModal();
+}
+
+// ── 绑定源码编辑器事件 ──
+document.addEventListener('DOMContentLoaded', function() {
+  var dialog = document.getElementById('source-editor-dialog');
+  var textarea = document.getElementById('source-editor-textarea');
+  var btnClose = document.getElementById('btn-close-source-editor');
+  var btnCopy = document.getElementById('btn-source-copy');
+  var btnFormat = document.getElementById('btn-source-format');
+  var btnSave = document.getElementById('btn-source-save');
+
+  if (!dialog || !textarea) return;
+
+  // 关闭
+  if (btnClose) {
+    btnClose.addEventListener('click', function() { dialog.close(); });
+  }
+
+  // 点击外部关闭
+  dialog.addEventListener('click', function(e) {
+    if (e.target === dialog) dialog.close();
+  });
+
+  // 一键复制
+  if (btnCopy) {
+    btnCopy.addEventListener('click', function() {
+      var text = textarea.value;
+      navigator.clipboard.writeText(text).then(function() {
+        var orig = btnCopy.textContent;
+        btnCopy.textContent = '✅ 已复制';
+        btnCopy.style.background = '#22c55e';
+        btnCopy.style.color = '#fff';
+        setTimeout(function() {
+          btnCopy.textContent = orig;
+          btnCopy.style.background = '';
+          btnCopy.style.color = '';
+        }, 1500);
+      }).catch(function() {
+        // fallback
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        btnCopy.textContent = '✅ 已复制';
+        setTimeout(function() { btnCopy.textContent = '📋 一键复制'; }, 1500);
+      });
+    });
+  }
+
+  // 格式化 HTML
+  if (btnFormat) {
+    btnFormat.addEventListener('click', function() {
+      try {
+        // 简单的缩进格式化：按标签换行 + 缩进
+        var formatted = textarea.value
+          .replace(/>\s*</g, '>\n<')
+          .split('\n')
+          .map(function(line) {
+            var indent = 0;
+            if (/^<\/\w/.test(line.trim())) indent = -1;
+            else if (/^<\w/.test(line.trim())) indent = 0;
+            var spaces = '';
+            // 计算当前缩进层级（基于闭合标签）
+            var trimmed = line.trim();
+            if (/^<\/\w/.test(trimmed)) {
+              // 闭合标签减少缩进
+              var closeCount = (trimmed.match(/<\//g) || []).length;
+              var openCount = (trimmed.match(/<[^/]/g) || []).length;
+              var netIndent = openCount - closeCount;
+              // 简单处理：闭合标签前退一格
+              spaces = '  '.repeat(Math.max(0, netIndent));
+            } else if (/^<\w/.test(trimmed)) {
+              spaces = '';
+            }
+            return spaces + trimmed;
+          })
+          .join('\n')
+          .replace(/\n{3,}/g, '\n\n'); // 去除多余空行
+        textarea.value = formatted;
+        setStatus('🔧 HTML 已格式化', 'ok');
+      } catch (e) {
+        setStatus('❌ 格式化失败: ' + e.message, 'err');
+      }
+    });
+  }
+
+  // 保存修改
+  if (btnSave) {
+    btnSave.addEventListener('click', async function() {
+      var newHtml = textarea.value.trim();
+      if (!newHtml) {
+        setStatus('❌ 源码不能为空', 'err');
+        return;
+      }
+      var id = _sourceEditorScriptId;
+      if (!id) {
+        setStatus('❌ 剧本 ID 丢失', 'err');
+        return;
+      }
+
+      // 更新 DB
+      await dbUpdate(id, { htmlLandingPage: newHtml });
+
+      // 同步更新 uif.landingPage
+      var entry = await dbGet(id);
+      if (entry && entry.uif) {
+        entry.uif.landingPage = newHtml;
+        await dbUpdate(id, { uif: entry.uif });
+      }
+
+      // 刷新详情面板
+      if (viewingLibId === id) {
+        showDetailInPanel(id);
+      }
+
+      dialog.close();
+      setStatus('✅ 宣发页源码已保存', 'ok');
+    });
+  }
+});
+
 //  16. AI 反应堆 (BYOK) — 双模式
 // ═══════════════════════════════════════
 // 支持 DeepSeek 原生模式 + 中转站模式，双配置隔离存储
@@ -4607,11 +4790,6 @@ $('char-seed-input').addEventListener('keydown', function(e) {
   }
 });
 
-// 捏人视图切换
-$('nav-char-creator').addEventListener('click', function() {
-  switchView('char-creator');
-});
-
 // ═══════════════════════════════════════
 //  16.5 世界观构建 · AI World Builder
 // ═══════════════════════════════════════
@@ -4779,11 +4957,6 @@ $('world-seed-input').addEventListener('keydown', function(e) {
   }
 });
 
-// 世界观视图切换
-$('nav-world-builder').addEventListener('click', function() {
-  switchView('world-builder');
-});
-
 // ═══════════════════════════════════════
 //  16.75 体系工坊 · Power System Builder
 // ═══════════════════════════════════════
@@ -4941,11 +5114,6 @@ $('power-seed-input').addEventListener('keydown', function(e) {
     e.preventDefault();
     generatePowerSystem();
   }
-});
-
-// 体系视图切换
-$('nav-power-builder').addEventListener('click', function() {
-  switchView('power-builder');
 });
 
 // ═══════════════════════════════════════

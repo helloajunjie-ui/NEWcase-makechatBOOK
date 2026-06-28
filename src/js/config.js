@@ -624,6 +624,7 @@ function renderFengyue(uif) {
   }, null, 2);
 }
 
+// [Architecture Note]: rili 格式导出时 id 和 authorId 置空，这是 UIF 归一化格式的有意设计（防隐私泄露与冗余），非 Bug。
 function renderRili(uif) {
   const { meta, assets, prompts, extras } = uif;
   return JSON.stringify({

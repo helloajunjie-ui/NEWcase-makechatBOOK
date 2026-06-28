@@ -1,4 +1,4 @@
-# 🧬 架构文档 — 尼可剧本工具
+# 🧬 架构文档 — 尼可剧本工具 · V2.1.0
 
 > **作者：尼可** · **QQ 群：1051068329**
 
@@ -23,7 +23,7 @@
 | [`src/html/views/view-char-creator.html`](./src/html/views/view-char-creator.html) | 捏人工坊视图 |
 | [`src/html/views/view-world-builder.html`](./src/html/views/view-world-builder.html) | 世界观构建视图 |
 | [`src/html/views/view-power-builder.html`](./src/html/views/view-power-builder.html) | 体系工坊视图 |
-| [`src/html/dialogs.html`](./src/html/dialogs.html) | AI 配置弹窗 + 主角确认弹窗 |
+| [`src/html/dialogs.html`](./src/html/dialogs.html) | AI 配置弹窗 + 主角确认弹窗 + 宣发页源码编辑器弹窗 |
 | [`src/html/footer.html`](./src/html/footer.html) | StatusBar + 右键菜单 + JS 注入点 |
 | **CSS 样式（`src/css/`）** | |
 | [`src/css/vars.css`](./src/css/vars.css) | CSS 变量、主题（暗夜/浅色）、Reset、滚动条 |
@@ -467,7 +467,49 @@ initChat()
 1. 在详情页点击 **✨ AI 铸造专属主题宣发页**
 2. AI 生成 HTML → 自动入库（同时更新 `uif.landingPage` 和 `htmlLandingPage`）
 3. 详情页刷新显示 ✅ 已铸造
-4. 支持 **预览**（Blob URL 新标签页）/ **下载**（独立 HTML 文件）/ **重新铸造**
+4. 支持 **预览**（Blob URL 新标签页）/ **下载**（独立 HTML 文件）/ **查看/编辑源码** / **重新铸造**
+
+### 宣发页源码编辑器
+
+已铸造宣发页可在详情页点击「📄 查看源码」打开源码编辑弹窗，支持查看、编辑、复制和保存 HTML 源码。
+
+**架构设计：**
+
+| 组件 | 位置 | 说明 |
+|------|------|------|
+| 弹窗 HTML | [`src/html/dialogs.html:104`](src/html/dialogs.html:104) | `<dialog id="source-editor-dialog">`，680px 宽，含 textarea + 操作按钮 |
+| 按钮注入 | [`src/js/ui.js:248`](src/js/ui.js:248) | `showDetailInPanel()` 中宣发页按钮组新增 `btnViewSource` |
+| 事件绑定 | [`src/js/ui.js:3326`](src/js/ui.js:3326) | 点击调用 `openSourceEditor(entry.htmlLandingPage, id)` |
+| 核心函数 | [`src/js/ui.js:4061`](src/js/ui.js:4061) | `openSourceEditor()` — 打开弹窗、填充内容 |
+| 事件注册 | [`src/js/ui.js:4073`](src/js/ui.js:4073) | `DOMContentLoaded` 中绑定复制/格式化/保存/关闭事件 |
+| CSS 样式 | [`src/css/components.css:1294`](src/css/components.css:1294) | textarea 聚焦高亮、选中紫色背景 |
+
+**功能矩阵：**
+
+| 功能 | 实现 | 细节 |
+|------|------|------|
+| 📋 一键复制 | `navigator.clipboard.writeText()` + fallback `execCommand('copy')` | 成功反馈 ✅ 动画，1.5s 后恢复 |
+| 🔧 格式化 | 标签换行 + 缩进清理 + 去多余空行 | 简单缩进格式化，非 prettier 级别 |
+| 💾 保存修改 | `dbUpdate(id, { htmlLandingPage })` + 同步更新 `uif.landingPage` | 双字段同步，保存后自动刷新详情面板 |
+| ✕ 关闭 | `dialog.close()` + 点击外部关闭 | 不保存直接关闭 |
+
+**数据流：**
+```
+详情页点击「📄 查看源码」
+    │
+    ▼
+openSourceEditor(htmlContent, scriptId)
+  ├─ textarea.value = htmlContent
+  ├─ _sourceEditorScriptId = scriptId
+  └─ dialog.showModal()
+    │
+    ▼
+用户编辑 → 💾 保存
+    ├─ dbUpdate(id, { htmlLandingPage: newHtml })
+    ├─ dbGet(id) → 更新 uif.landingPage → dbUpdate(id, { uif })
+    ├─ showDetailInPanel(id) 刷新
+    └─ dialog.close()
+```
 
 ---
 
@@ -643,4 +685,4 @@ messages.push({ role: 'assistant', content: reply });
 
 **作者：尼可** · **QQ 群：1051068329** · 欢迎进群交流反馈
 
-*最后更新: 2026-06-28*
+*最后更新: 2026-06-28 · V2.1.0*
