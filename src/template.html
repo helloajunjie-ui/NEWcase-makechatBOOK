@@ -326,6 +326,25 @@
   </div>
 </dialog>
 
+<!-- 主角身份确认弹窗 -->
+<dialog id="protagonist-dialog" class="ai-dialog">
+  <div class="ai-dialog-header">
+    <span>🎭 确认主角身份</span>
+    <button id="btn-close-protagonist" class="icon-btn" title="关闭">✕</button>
+  </div>
+  <div class="ai-dialog-body">
+    <p style="margin:0 0 12px 0;color:var(--text-secondary);font-size:13px">AI 需要知道玩家在本剧本中扮演谁，才能生成精准的宣发页。请确认或修改主角身份：</p>
+    <div class="ai-config-field">
+      <label for="protagonist-input">主角身份描述</label>
+      <textarea id="protagonist-input" rows="3" placeholder="例：穿越到异世界的普通上班族，意外获得系统..." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);resize:vertical;font-size:13px;line-height:1.5;font-family:inherit;box-sizing:border-box"></textarea>
+    </div>
+  </div>
+  <div class="ai-dialog-footer">
+    <button id="btn-skip-protagonist" class="btn btn-secondary">⏭ 让 AI 自行判断</button>
+    <button id="btn-confirm-protagonist" class="btn btn-primary">✅ 确认，开始铸造</button>
+  </div>
+</dialog>
+
 <div id="statusBar">
   <span class="dot idle" id="statusDot"></span>
   <span id="statusText">就绪 — 上传或粘贴剧本 JSON 开始转换</span>
