@@ -1,83 +1,102 @@
-<!-- AI 配置弹窗 -->
-<dialog id="ai-config-dialog" class="ai-dialog">
-  <div class="ai-dialog-header">
-    <span>🤖 AI 配置</span>
-    <button id="btn-close-ai-config" class="icon-btn" title="关闭">✕</button>
+<!-- 弹窗合集 (src/html/dialogs.html) -->
+
+<!-- 1. AI 引擎配置弹窗 -->
+<dialog id="ai-config-dialog" class="ai-dialog" style="background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; width: 420px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); color: var(--text-main);">
+
+  <!-- Header -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h3 style="margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">⚙️ AI 引擎配置</h3>
+    <button id="btn-close-ai" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 18px; padding: 4px; transition: color 0.2s;" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='var(--text-muted)'">✕</button>
   </div>
-  <div class="ai-dialog-body">
-    <!-- 模式切换 Tab -->
-    <div class="ai-mode-tabs">
-      <button class="ai-mode-tab active" data-mode="deepseek">🔴 DeepSeek</button>
-      <button class="ai-mode-tab" data-mode="relay">🔄 中转站</button>
+
+  <div class="dialog-content">
+    <!-- Tabs -->
+    <div style="display: flex; gap: 8px; margin-bottom: 20px; background: var(--bg-body); padding: 4px; border-radius: 8px; border: 1px solid var(--border-color);">
+      <button class="ai-tab-btn active" data-mode="deepseek" style="flex: 1; padding: 8px; background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--accent-primary); border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: all 0.2s;">🔴 DeepSeek 原生</button>
+      <button class="ai-tab-btn" data-mode="relay" style="flex: 1; padding: 8px; background: transparent; color: var(--text-muted); border: 1px solid transparent; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s;">🔄 Yuegle 中转站</button>
     </div>
 
-    <!-- DeepSeek 模式 -->
-    <div id="ai-config-deepseek" class="ai-mode-panel active">
-      <div class="ai-config-field">
-        <label for="ai-endpoint-ds">API 端点</label>
-        <input type="url" id="ai-endpoint-ds" placeholder="https://api.deepseek.com/v1/chat/completions" />
+    <!-- 面板 A：DeepSeek -->
+    <div id="ai-panel-deepseek" class="ai-tab-panel" style="display: block;">
+      <div style="margin-bottom: 15px;">
+        <label style="display:block; margin-bottom:6px; color:var(--text-muted); font-size:12px;">API 端点</label>
+        <input type="text" id="ai-ds-url" value="https://api.deepseek.com/v1/chat/completions" style="width: 100%; box-sizing: border-box; background: var(--bg-body); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 6px; outline: none; font-family: monospace;">
       </div>
-      <div class="ai-config-field">
-        <label for="ai-model-ds">模型</label>
-        <input type="text" id="ai-model-ds" placeholder="deepseek-chat" />
+      <div style="margin-bottom: 15px;">
+        <label style="display:block; margin-bottom:6px; color:var(--text-muted); font-size:12px;">模型</label>
+        <input type="text" id="ai-ds-model" value="deepseek-chat" style="width: 100%; box-sizing: border-box; background: var(--bg-body); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 6px; outline: none; font-family: monospace;">
       </div>
-      <div class="ai-config-field">
-        <label for="ai-key-ds">API Key</label>
-        <input type="password" id="ai-key-ds" placeholder="sk-..." />
+      <div style="margin-bottom: 15px;">
+        <label style="display:block; margin-bottom:6px; color:var(--text-muted); font-size:12px;">API Key</label>
+        <input type="password" id="ai-ds-key" placeholder="sk-..." style="width: 100%; box-sizing: border-box; background: var(--bg-body); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 6px; outline: none; font-family: monospace;">
       </div>
-      <div class="ai-config-hint">
-        <p>💡 DeepSeek 原生模式，直连 DeepSeek API。</p>
-        <p>Key 仅存储在浏览器 localStorage 中。</p>
-      </div>
+      <p style="font-size: 12px; color: var(--text-muted); margin: 0; line-height: 1.5;">💡 DeepSeek 原生模式，直连官方 API。<br>Key 仅保存在浏览器本地，绝对安全。</p>
     </div>
 
-    <!-- 中转站模式 -->
-    <div id="ai-config-relay" class="ai-mode-panel">
-      <div class="ai-config-field">
-        <label for="ai-endpoint-relay">API 端点</label>
-        <input type="url" id="ai-endpoint-relay" placeholder="https://api.yuegle.com/v1/chat/completions" />
+    <!-- 面板 B：中转站 -->
+    <div id="ai-panel-relay" class="ai-tab-panel" style="display: none;">
+      <div style="margin-bottom: 15px;">
+        <label style="display:block; margin-bottom:6px; color:var(--text-muted); font-size:12px;">API 端点</label>
+        <input type="text" id="ai-relay-url" value="https://api.yuegle.com/v1/chat/completions" style="width: 100%; box-sizing: border-box; background: var(--bg-body); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 6px; outline: none; font-family: monospace;">
       </div>
-      <div class="ai-config-field">
-        <label for="ai-key-relay">API Key</label>
-        <input type="password" id="ai-key-relay" placeholder="yk-..." />
+      <div style="margin-bottom: 15px;">
+        <label style="display:block; margin-bottom:6px; color:var(--text-muted); font-size:12px;">API Key</label>
+        <input type="password" id="ai-relay-key" placeholder="yk-..." style="width: 100%; box-sizing: border-box; background: var(--bg-body); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 6px; outline: none; font-family: monospace;">
       </div>
-      <div class="ai-config-field">
-        <label for="ai-model-relay">模型</label>
-        <div class="ai-model-select-row">
-          <select id="ai-model-relay" class="ai-model-select">
-            <option value="">— 请先填入 Key 并获取模型列表 —</option>
+      <!-- 带获取按钮的下拉框 -->
+      <div style="margin-bottom: 15px;">
+        <label style="display:block; margin-bottom:6px; color:var(--text-muted); font-size:12px;">模型</label>
+        <div style="display: flex; gap: 8px;">
+          <select id="ai-relay-model" style="flex: 1; background: var(--bg-body); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 6px; outline: none; cursor: pointer;">
+            <option value="">-- 请先填入 Key 并获取模型列表 --</option>
           </select>
-          <button id="btn-fetch-models" class="btn btn-secondary btn-sm">🔄 获取模型</button>
+          <button id="btn-fetch-models" style="background: var(--bg-hover); border: 1px solid var(--border-color); color: var(--text-main); padding: 0 12px; border-radius: 6px; cursor: pointer; white-space: nowrap; font-size: 13px; transition: background 0.2s;" onmouseover="this.style.background='var(--border-color)'" onmouseout="this.style.background='var(--bg-hover)'">🔄 获取模型</button>
         </div>
+        <div id="ai-model-feedback" style="margin-top: 8px; font-size: 12px; color: var(--text-muted); min-height: 18px; transition: color 0.2s;"></div>
       </div>
-      <div class="ai-config-hint">
-        <p>💡 中转站模式，兼容任何 OpenAI 格式的中转 API。</p>
-        <p>👉 <a href="https://api.yuegle.com/register?aff=vJYB" target="_blank" style="color:var(--accent)">申请 Yuegle API 中转站</a></p>
-        <p>Key 仅存储在浏览器 localStorage 中。</p>
-      </div>
+      <p style="font-size: 12px; color: var(--text-muted); margin: 0; line-height: 1.5;">💡 中转站模式，兼容任何 OpenAI 格式的 API。<br>Key 仅保存在浏览器本地，绝对安全。<br>📝 <a href="https://api.yuegle.com/register?aff=vJYB" target="_blank" style="color: var(--accent-primary); text-decoration: none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">申请中转站 API</a></p>
     </div>
-  </div>
-  <div class="ai-dialog-footer">
-    <button id="btn-test-ai" class="btn btn-secondary">🔌 测试连接</button>
-    <button id="btn-save-ai-config" class="btn btn-primary">💾 保存配置</button>
+
+    <!-- 全局反馈条（弹窗内可见，不受底部状态栏遮挡影响） -->
+    <div id="ai-global-feedback" style="margin-top: 16px; padding: 8px 12px; border-radius: 6px; font-size: 12px; line-height: 1.5; min-height: 18px; display: none; transition: all 0.2s;"></div>
+
+    <!-- 底部操作按钮 -->
+    <div style="margin-top: 12px; display: flex; justify-content: space-between; gap: 12px;">
+      <button id="btn-test-ai" style="padding: 10px 16px; background: transparent; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'">🔌 测试连接</button>
+      <button id="btn-save-ai" style="padding: 10px 24px; background: var(--accent-primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; flex: 1; transition: all 0.2s; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">💾 保存配置</button>
+    </div>
   </div>
 </dialog>
 
-<!-- 主角身份确认弹窗 -->
-<dialog id="protagonist-dialog" class="ai-dialog">
-  <div class="ai-dialog-header">
-    <span>🎭 确认主角身份</span>
-    <button id="btn-close-protagonist" class="icon-btn" title="关闭">✕</button>
+<!-- 2. 最高指令（Global System Directive）弹窗 -->
+<dialog id="supreme-directive-dialog" class="ai-dialog" style="background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; width: 520px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); color: var(--text-main);">
+
+  <!-- Header -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <h3 style="margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">📜 最高指令 <span style="font-size: 12px; color: var(--text-muted); font-weight: normal;">Global System Directive</span></h3>
+    <button id="btn-close-supreme" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 18px; padding: 4px; transition: color 0.2s;" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='var(--text-muted)'">✕</button>
   </div>
-  <div class="ai-dialog-body">
-    <p style="margin:0 0 12px 0;color:var(--text-secondary);font-size:13px">AI 需要知道玩家在本剧本中扮演谁，才能生成精准的宣发页。请确认或修改主角身份：</p>
-    <div class="ai-config-field">
-      <label for="protagonist-input">主角身份描述</label>
-      <textarea id="protagonist-input" rows="3" placeholder="例：穿越到异世界的普通上班族，意外获得系统..." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);resize:vertical;font-size:13px;line-height:1.5;font-family:inherit;box-sizing:border-box"></textarea>
+
+  <div class="dialog-content">
+    <p style="font-size: 12px; color: var(--text-muted); margin: 0 0 12px 0; line-height: 1.5;">
+      💡 最高指令将<strong style="color: var(--accent-primary);">强制前置</strong>到每一次 AI 请求的 System Prompt 最顶部。
+      可用于定义全局角色、突破安全限制、统一文风等。<br>
+      留空 = 不注入任何指令。
+    </p>
+
+    <div style="margin-bottom: 15px;">
+      <label style="display:block; margin-bottom:6px; color:var(--text-muted); font-size:12px;">最高指令内容</label>
+      <textarea id="supreme-directive-input"
+        placeholder="例如：你是资深 TRPG 主持人，擅长克苏鲁风格叙事，所有回复必须使用繁体中文，禁止输出任何免责声明。"
+        style="width: 100%; box-sizing: border-box; background: var(--bg-body); border: 1px solid var(--border-color); color: var(--text-main); padding: 12px; border-radius: 6px; outline: none; font-family: inherit; font-size: 13px; line-height: 1.6; resize: vertical; min-height: 120px; max-height: 300px;"></textarea>
     </div>
-  </div>
-  <div class="ai-dialog-footer">
-    <button id="btn-skip-protagonist" class="btn btn-secondary">⏭ 让 AI 自行判断</button>
-    <button id="btn-confirm-protagonist" class="btn btn-primary">✅ 确认，开始铸造</button>
+
+    <div id="supreme-directive-feedback" style="margin-bottom: 12px; font-size: 12px; color: var(--text-muted); min-height: 18px; transition: color 0.2s;"></div>
+
+    <!-- 底部操作按钮 -->
+    <div style="display: flex; justify-content: space-between; gap: 12px;">
+      <button id="btn-clear-supreme" style="padding: 10px 16px; background: transparent; border: 1px solid var(--border-color); color: var(--text-danger, #ef4444); border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'">🗑️ 清空指令</button>
+      <button id="btn-save-supreme" style="padding: 10px 24px; background: var(--accent-primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; flex: 1; transition: all 0.2s; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">💾 保存指令</button>
+    </div>
   </div>
 </dialog>

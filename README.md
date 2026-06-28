@@ -2,9 +2,9 @@
 
 > **作者：尼可** · **QQ 群：1051068329**
 
-> **格式转换 · AI 铸造 · AI 动态生成沉浸式 HTML 宣发页 — 一站式剧本管理平台**
+> **格式转换 · AI 铸造 · AI 动态生成沉浸式 HTML 宣发页 · 灵感对话 — 一站式剧本管理平台**
 
-春潮 / 风月 / MISS 剧本格式互转，AI 辅助创作，AI 根据世界观动态生成主题 HTML 宣发页，全部在浏览器本地完成。
+春潮 / 风月 / MISS 剧本格式互转，AI 辅助创作，AI 根据世界观动态生成主题 HTML 宣发页，内置 AI 灵感对话助手，全部在浏览器本地完成。
 
 ---
 
@@ -72,6 +72,15 @@
 - **适用场景**：修仙等阶、异能升级树、功法体系、血脉进化、装备品级等
 - **流水线导出**：生成结果自动保存，可在剧本工坊 Step 2 导入作为素材
 
+### 💬 灵感对话
+
+**与 AI 进行多轮灵感对话，辅助剧本创作。** 内置多轮记忆管理，自动持久化，不丢失上下文。
+
+- **多轮记忆**：自动保存最近 20 轮对话（滑动窗口），超出自动裁剪
+- **无感存档**：每次对话后自动持久化到 `localStorage`，刷新页面不丢失
+- **TXT 导出**：一键导出完整对话历史为格式化文本文件
+- **清空对话**：一键重置，开始全新灵感碰撞
+
 ### 🌐 AI 动态生成沉浸式 HTML 宣发页
 
 **每个剧本都值得一个独一无二的高逼格独立入口。** 这不是简单的模板套壳——AI 根据剧本的世界观、风格、标签，从零手写一套匹配题材的 HTML/CSS/JS 单页应用。
@@ -102,6 +111,7 @@
 ### 1. 打开工具
 
 直接双击 [`index.html`](./index.html) 在浏览器中打开，**零依赖，无需安装**。
+> 推荐使用 `npx http-server -p 8080 --cors` 启动本地服务器以获得最佳体验。
 
 ### 2. 转换剧本
 
@@ -132,7 +142,15 @@
 - **下载**：点击 ⬇ 下载，保存为独立 HTML 文件
 - **重新铸造**：点击 🔄 重新铸造，AI 重新生成覆盖入库
 
-### 6. 独立工坊
+### 6. 灵感对话
+
+1. 切换到 **💬 灵感对话** 视图
+2. 在输入框输入你的灵感或问题，按回车或点击发送
+3. AI 回复后自动保存对话历史
+4. 点击 **📥 导出 TXT** 下载完整对话记录
+5. 点击 **🗑 清空对话** 重置会话
+
+### 7. 独立工坊
 
 - **🧑 捏人**：一句话 → AI 生成完整人物档案 → 复制/导入流水线
 - **🌍 世界观**：一句话 → AI 构建世界观 → 复制/导入流水线
@@ -140,33 +158,45 @@
 
 ---
 
-## 🔧 命令行测试
-
-```bash
-node test_convert.js    # 27 项转换测试
-node audit_mapping.js   # ~80 项字段级审计
-```
-
----
-
 ## 📁 项目结构
 
 ```
-├── index.html           # 构建产物 — 浏览器打开即用
+├── index.html              # 构建产物 — 浏览器打开即用
+├── build.js                # 构建脚本（合并 src/ → index.html）
+├── ARCHITECTURE.md         # 完整架构文档（开发者必读）
+│
 ├── src/
-│   ├── template.html    # HTML 骨架
-│   ├── styles.css       # 全部样式
-│   └── main.js          # 全部 JS 逻辑
-├── build.js             # 构建脚本（合并 src/ 三文件 → index.html）
-├── ARCHITECTURE.md      # 完整架构文档（开发者必读）
-├── test_convert.js      # 转换测试（27 项）
-├── audit_mapping.js     # 字段审计（~80 项）
-├── temp_core.js         # 核心函数提取（供测试使用）
-├── 樱花特效背景.html    # 樱花特效原始文件（WebGL 源码）
-├── sakura_inject.js     # 樱花特效注入脚本（构建辅助）
-├── inject_char.js       # 捏人工坊注入脚本（构建辅助）
-├── fix_escape.js        # 实体转义修复脚本（构建辅助）
-└── *.json               # 三个平台的剧本示例文件
+│   ├── css/
+│   │   ├── vars.css        # CSS 变量、主题、Reset、滚动条
+│   │   ├── layout.css      # 布局样式（Header/Nav/Views/StatusBar/Responsive）
+│   │   └── components.css  # 组件样式（Upload/Batch/Buttons/Output/...）
+│   │
+│   ├── html/
+│   │   ├── head.html       # DOCTYPE + head + CSS 注入点
+│   │   ├── nav.html        # 导航栏（7 视图切换 + 主题/AI 按钮）
+│   │   ├── dialogs.html    # AI 配置弹窗 + 主角确认弹窗
+│   │   ├── footer.html     # StatusBar + 右键菜单 + JS 注入点
+│   │   └── views/
+│   │       ├── view-converter.html      # 📐 转换器
+│   │       ├── view-generator.html      # 🏭 剧本工坊
+│   │       ├── view-chat.html           # 💬 灵感对话
+│   │       ├── view-library.html        # 📚 剧本库
+│   │       ├── view-char-creator.html   # 🧑 捏人工坊
+│   │       ├── view-world-builder.html  # 🌍 世界观构建
+│   │       └── view-power-builder.html  # ⚡ 体系工坊
+│   │
+│   └── js/
+│       ├── config.js       # UIF 定义、工具函数、格式检测、解析器、渲染器
+│       ├── db.js           # IndexedDB 操作（openDB/CRUD/UID 去重）
+│       ├── ui.js           # UI 逻辑、SPA 视图切换、库渲染、批量转换、事件绑定
+│       ├── api.js          # AI 反应堆（BYOK 双模式：DeepSeek + 中转站）
+│       └── features/
+│           ├── chat.js           # 💬 灵感对话（多轮记忆/滑动窗口/TXT 导出）
+│           └── main-features.js  # 捏人工坊/世界观/体系/剧本车间/樱花 WebGL
+│
+├── 【春潮】全息韩国真实生活模拟器-20260628.json   # 春潮示例剧本
+├── [风月]穿成阿龙，但这次鱼人说了算-20260628-104717.json  # 风月示例剧本
+└── 【MISS】海拉鲁悲歌交响.json                     # MISS 示例剧本
 ```
 
 ---
@@ -178,6 +208,7 @@ node audit_mapping.js   # ~80 项字段级审计
 - 封面/背景图为外部链接，可能随源站变动而失效
 - 宣发页 HTML 存储在 IndexedDB 中，导出时需手动下载
 - 同名同源 JSON 文件重复导入会自动覆盖更新（基于 UID 去重），不会产生重复条目
+- 灵感对话记录存储在 localStorage，清除浏览器数据会丢失
 
 ---
 

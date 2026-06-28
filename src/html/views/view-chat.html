@@ -1,0 +1,28 @@
+<main id="view-chat" class="app-view" style="display: none; height: calc(100vh - 80px); flex-direction: column;">
+
+  <!-- Header -->
+  <div style="padding: 16px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+    <h2 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">💬 灵感对话 <span style="font-size: 12px; color: var(--text-muted); font-weight: normal;">卡文时和 AI 聊聊</span></h2>
+    <div style="display: flex; gap: 8px;">
+      <button id="btn-export-chat" style="padding: 6px 14px; background: transparent; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'">⬇️ 导出记录</button>
+      <button id="btn-clear-chat" style="padding: 6px 14px; background: transparent; border: 1px solid var(--border-color); color: var(--text-danger, #ef4444); border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'">🗑️ 清空记忆</button>
+    </div>
+  </div>
+
+  <!-- 聊天记录展示区 -->
+  <div id="chat-history-box" style="flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px;">
+    <!-- 默认空状态：欢迎消息 -->
+    <div style="align-self: flex-start; background: var(--bg-panel); padding: 16px 20px; border-radius: 8px 8px 8px 0; border: 1px solid var(--border-color); max-width: 80%; color: var(--text-main); line-height: 1.6;">
+      👋 你好，我是你的灵感副驾。<br><br>
+      卡文了吗？我们可以聊聊世界观设定，或者让我帮你推演接下来的剧情走向。<br><br>
+      <span style="color: var(--text-muted); font-size: 13px;">💡 试试说：<em>"帮我想三个赛博朋克风的酒馆名字"</em></span>
+    </div>
+  </div>
+
+  <!-- 聊天输入区 -->
+  <div style="padding: 16px 24px; background: var(--bg-panel); border-top: 1px solid var(--border-color); display: flex; gap: 12px; flex-shrink: 0;">
+    <textarea id="chat-input" rows="2" placeholder="输入你的问题或脑洞... (Shift + Enter 换行，Enter 发送)" style="flex: 1; background: var(--bg-body); border: 1px solid var(--border-color); color: var(--text-main); padding: 12px; border-radius: 8px; resize: none; outline: none; font-family: inherit; font-size: 14px; line-height: 1.5;"></textarea>
+    <button id="btn-send-chat" style="padding: 0 28px; border-radius: 8px; font-weight: bold; background: var(--accent-primary); color: white; border: none; cursor: pointer; font-size: 14px; transition: all 0.2s; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">发送 🚀</button>
+  </div>
+
+</main>

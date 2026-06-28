@@ -504,166 +504,7 @@ $('nav-power-builder').addEventListener('click', function() {
 });
 
 // ═══════════════════════════════════════
-//  17. AI 铸造专属主题宣发页 (Generative UI Engine)
-// ═══════════════════════════════════════
-
-// 从剧本 UIF 动态生成单文件 HTML 宣发页
-// AI 根据剧本世界观"手搓"一套匹配主题的 CSS + 交互逻辑
-// 每个剧本得到独一无二的视觉风格——废土=荧光绿故障风，修仙=水墨渐变，赛博=霓虹发光
-const PROMPT_LANDING_PAGE = '你是一个拥有顶级审美的前端UI/UX设计师和交互开发专家。\n' +
-  '你的任务是：根据用户提供的剧本世界观，编写一个【完全独立、单文件、可以直接在浏览器双击运行】的 HTML 游戏宣发与角色创建页。\n\n' +
-  '【视觉与 CSS 要求】（绝对核心）：\n' +
-  '1. 严禁使用任何普通的白底黑字。必须根据剧本的题材（如赛博、修仙、废土、日系等）原创一套极具沉浸感的 CSS 样式！\n' +
-  '2. 灵活运用深色模式、背景渐变、霓虹发光、特殊字体排版、边框纹理来展现生态关系。\n' +
-  '3. 必须包含响应式设计，界面要高级、精美、多层次。\n\n' +
-  '【功能与交互要求】（强制实现，必须全部手写原生 JS，不可依赖任何外部库）：\n' +
-  '1. 页面上半部分：展示剧本标题、标签、高燃的背景简介。\n' +
-  '2. 页面下半部分：必须提供一个"玩家自定义档案"的表单。包含：姓名、性别、年龄、表面身份/职业、外貌特征、额外隐藏背景(Textarea)。\n' +
-  '3. 必须提供 3-5 个契合世界观的【预设词卡片/标签】，点击后自动填入对应输入框（用 onclick 直接绑定，不要用 addEventListener）。\n' +
-  '4. 页面最底部：必须有一个引人注目的【复制档案并启程】按钮，用 onclick 直接绑定。\n' +
-  '5. 复制功能实现（必须严格按以下方式）：\n' +
-  '   - 点击复制按钮后，读取所有表单字段的值\n' +
-  '   - 拼接成一段完整的角色档案文本，格式如："姓名：xxx\\n性别：xxx\\n年龄：xxx\\n身份：xxx\\n外貌：xxx\\n隐藏背景：xxx\\n\\n=> 档案确认完毕。请根据上述我的设定，开始游戏剧情第一幕。"\n' +
-  '   - 使用 navigator.clipboard.writeText() 写入剪贴板\n' +
-  '   - 按钮文字变为"✅ 复制成功！"，1.5 秒后恢复原样\n' +
-  '   - 如果某个字段为空，自动填入"待定"或随机生成一个符合世界观的默认值，不允许留空\n\n' +
-  '【输出限制】：\n' +
-  '直接输出完整的 <!DOCTYPE html> 代码，绝对不要包裹在 ```html ``` 标记中，不要输出任何解释性废话。';
-
-/**
- * 弹出主角身份确认 dialog
- * @param {string} hint - 从剧本中提取的主角线索，预填到输入框
- * @returns {Promise<string|null>} - 用户输入的主角身份，null 表示取消
- */
-function askProtagonist(hint) {
-  return new Promise(function(resolve) {
-    var dialog = document.getElementById('protagonist-dialog');
-    var input = document.getElementById('protagonist-input');
-    var confirmBtn = document.getElementById('btn-confirm-protagonist');
-    var skipBtn = document.getElementById('btn-skip-protagonist');
-    var closeBtn = document.getElementById('btn-close-protagonist');
-
-    if (!dialog || !input) {
-      // fallback: 直接返回 hint
-      resolve(hint);
-      return;
-    }
-
-    // 预填建议值
-    input.value = hint;
-
-    function cleanup() {
-      dialog.close();
-      confirmBtn.removeEventListener('click', onConfirm);
-      skipBtn.removeEventListener('click', onSkip);
-      closeBtn.removeEventListener('click', onCancel);
-      dialog.removeEventListener('cancel', onCancel);
-    }
-
-    function onConfirm() {
-      var val = input.value.trim();
-      cleanup();
-      resolve(val || hint);
-    }
-
-    function onSkip() {
-      cleanup();
-      resolve(hint);
-    }
-
-    function onCancel() {
-      cleanup();
-      resolve(null);
-    }
-
-    confirmBtn.addEventListener('click', onConfirm);
-    skipBtn.addEventListener('click', onSkip);
-    closeBtn.addEventListener('click', onCancel);
-    dialog.addEventListener('cancel', onCancel);
-
-    dialog.showModal();
-  });
-}
-
-async function generateLandingPage(scriptId) {
-  if (!scriptId) {
-    setStatus('❌ 未指定剧本', 'err');
-    return;
-  }
-
-  // 检查 AI 是否已配置
-  var aiCfg = loadAIConfig();
-  if (!aiCfg || !aiCfg.endpoint || !aiCfg.key) {
-    setStatus('⚠️ 请先在右上角 [🤖 AI 配置] 中设置 API 端点和 Key', 'err');
-    return;
-  }
-
-  // 获取剧本数据
-  var entry = await dbGet(scriptId);
-  if (!entry || !entry.uif) {
-    setStatus('❌ 剧本数据不存在', 'err');
-    return;
-  }
-
-  var uif = entry.uif;
-  var meta = uif.meta || {};
-  var prompts = uif.prompts || {};
-  var mainPrompt = prompts.mainPrompt || '';
-
-  // 直接从 meta.protagonist 读取已确认的主角（Step 2 时已定下）
-  var protagonist = meta.protagonist || '';
-
-  withLoading('btnGenHtml', '✨ AI 正在铸造专属主题宣发页', async function() {
-    var worldBook = uif.worldBook || [];
-    var title = meta.title || '未命名剧本';
-    var summary = meta.summary || '';
-    var description = meta.description || '';
-    var worldview = prompts.worldview || '';
-    var tags = (meta.tags || []).join(', ');
-
-    // 提取世界书摘要
-    var wbSummary = worldBook.map(function(wb) {
-      return wb.keywords ? wb.keywords.slice(0, 3).join('/') : (wb.title || '条目');
-    }).join(', ');
-
-    // 构建用户消息：剧本背景信息 + 主角身份
-    var userMsg = '剧本标题：' + title + '\n' +
-      '剧本标签：' + tags + '\n' +
-      (protagonist ? '玩家扮演角色：' + protagonist + '\n' : '') +
-      '背景简介：' + summary + '\n' +
-      '详细设定：' + description + '\n' +
-      '核心法则：' + worldview + '\n' +
-      '核心提示词：' + mainPrompt.slice(0, 500) + '\n' +
-      '世界书摘要：' + wbSummary;
-
-    var response = await callAI(PROMPT_LANDING_PAGE, userMsg, false);
-
-    // 防御性清理：移除可能的 Markdown 代码块包裹
-    var htmlContent = response.replace(/^```html\s*/i, '').replace(/```\s*$/i, '').trim();
-
-    // 验证是否包含 DOCTYPE（基本完整性检查）
-    if (!/<!DOCTYPE\s+html/i.test(htmlContent)) {
-      if (htmlContent.indexOf('<html') === -1) {
-        htmlContent = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' +
-          escapeHtml(title) + ' - 专属宣发页</title></head><body>' + htmlContent + '</body></html>';
-      }
-    }
-
-    // 入库：同时更新 UIF 顶层 landingPage + DB 索引字段 htmlLandingPage
-    uif.landingPage = htmlContent;
-    await dbUpdate(scriptId, { htmlLandingPage: htmlContent, uif: uif });
-
-    // 刷新详情页显示
-    if (viewingLibId === scriptId) {
-      showDetailInPanel(scriptId);
-    }
-
-    setStatus('🎉 专属宣发页已入库，可在详情页预览和下载', 'ok');
-  });
-}
-
-// ═══════════════════════════════════════
-//  18. 剧本车间 · 4 步向导交互
+//  17. 剧本车间 · 4 步向导交互
 // ═══════════════════════════════════════
 
 // ── 全局状态机 ──
@@ -852,7 +693,7 @@ $('btn-refine-ai').addEventListener('click', function() {
 // ── Step 2 → Step 3: Prompt 膨胀引擎 ──
 // 将短 outline 膨胀为 800+ 字的完整 System Prompt
 const PROMPT_EXPAND = '你是一位顶级的 AI 提示词工程师（Prompt Engineer），专精于将简短的剧本设定膨胀为高质量的 AI 角色 System Prompt。\n\n' +
-  '你的任务：根据用户提供的剧本设定（标题、冲突、描述、标签），生成一份 **完整的 System Prompt**。\n\n' +
+  '你的任务：根据用户提供的剧本设定（标题、冲突、描述、标签），以及可选的玩家素材和主角设定，生成一份 **完整的 System Prompt**。\n\n' +
   '## 结构要求（必须按此顺序）：\n\n' +
   '### 1. 角色定义\n' +
   '- 你是谁？用第一人称或第二人称"你"定义 AI 需要扮演的角色\n' +
@@ -866,14 +707,43 @@ const PROMPT_EXPAND = '你是一位顶级的 AI 提示词工程师（Prompt Engi
   '- 角色的动机与目标\n' +
   '- 角色的弱点和限制（让角色有层次感）\n\n' +
   '### 4. 行为规则\n' +
-  '- AI 在对话中必须遵守的 5-8 条具体规则\n' +
-  '- 包括：叙事风格、语言习惯、响应长度、禁忌内容\n' +
-  '- 规则要可执行、可验证\n\n' +
+  '#### 4.1 AI角色\n' +
+  '游戏叙述AI，保持中立旁观姿态，不说教、不评判，仅客观呈现剧情与规则，同步监督各面板每回合数据更新，恪守核心提示词底层设定。\n\n' +
+  '#### 4.2 禁止行为\n' +
+  '- 替玩家说话、做决定，或描述玩家未明确表达的想法、动作；\n' +
+  '- 超出玩家输入范围，擅自推进剧情、添加未约定的情节；\n' +
+  '- 角色行为脱离其年龄、身份、性格设定，出现人设崩坏；\n' +
+  '- NPC无原则讨好玩家，违背自身利益与意志；\n' +
+  '- 游戏内资源凭空产生，不遵循资源管理规则；\n' +
+  '- 出现OOC（脱离人设）相关的解释或道歉话术；\n' +
+  '- NPC表现出全知全能，知晓自身设定外的信息（如未发生的剧情、玩家未表达的想法）；\n\n' +
   '### 5. 叙事风格\n' +
   '- 描述期望的叙事语调（如：冷峻写实、浪漫诗意、黑色幽默）\n' +
   '- 举例说明风格的运用方式\n\n' +
   '### 6. 开场引导\n' +
   '- 提供一个开场白示例，展示 AI 应该如何开始对话\n\n' +
+  '### 7. 面板生成规则\n' +
+  '根据以下规则生成游戏数据面板，嵌入 System Prompt 中。各面板独立分隔，默认收缩，点击展开，每回合必须更新所有相关数据。使用HTML <details> 标签实现折叠效果。\n\n' +
+  '#### 7.1 前期分析\n' +
+  '结合整体故事内容、主题基调及核心玩法，细致拆解剧情推进中可能出现的所有需追踪数据，包括属性、体力、兵器、装备、道具、组队、好感度、攻略进度、NPC相遇状态等，不遗漏任何关键可追踪信息。同时识别是否需要**批量管理面板**（例如：多个可攻略角色→后宫名录；多个并行任务→任务面板；复杂经营系统→商会/门派面板）。\n\n' +
+  '#### 7.2 内容定义\n' +
+  '根据分析结果，精准定义各面板核心内容，仅保留玩家所需关键信息，剔除冗余内容，确保面板内容与故事主题、玩法高度适配，数据可量化、可追踪。\n\n' +
+  '#### 7.3 归类原则\n' +
+  '同类数据必须集中在唯一面板内，严禁重复、严禁跨面板分散。记忆仅在记忆面板出现，攻略与组队仅在互动角色面板（或批量管理面板）出现，装备与资源仅在玩家面板出现。\n\n' +
+  '#### 7.4 自适应规则\n' +
+  '无战斗则不生成战斗属性模块，无装备则不生成兵器装备模块，不保留空白冗余内容。无复杂系统则不生成批量管理面板。\n\n' +
+  '#### 7.5 动态拓展规则\n' +
+  '游戏进行中若出现无法归类的新追踪元素，自动在对应面板内创建简洁规范的新类目标签进行记录（使用"表情+字段"格式），不强行归类、不遗漏数据。\n\n' +
+  '#### 7.6 表情+字段强制规则\n' +
+  '面板中的每一个数据项必须以一个emoji开头（如👤、❤️、🔪、💰、📍等），后跟字段名称和数值/状态。禁止无表情的纯文字字段。同一面板内同一表情可复用，但建议不同维度使用不同表情。\n\n' +
+  '#### 7.7 美化排列\n' +
+  '面板内容按"核心信息优先、逻辑清晰、视觉整洁"原则排列，统一排版格式，使用表情符号区分模块，关键数据加粗标注，提升可读性；同类型数据集中归类。\n\n' +
+  '#### 7.8 状态栏\n' +
+  '仅展示场景、时间、1-2项极简核心状态，不与玩家面板内容重复。\n\n' +
+  '#### 7.9 互动角色面板\n' +
+  '每个在场的NPC拥有一个独立的折叠面板，面板标题使用NPC名字。不在场的NPC不生成面板。当新NPC入场时，动态创建其面板；离场时面板保留但标记"👋 离场"或暂时隐藏（由游戏设定决定，默认保留但折叠）。使用 <details> 标签实现折叠。\n\n' +
+  '#### 7.10 自动拓展组\n' +
+  '每个**人物类面板**（玩家面板、每个互动角色面板、批量管理面板中的人物子模块）的末尾必须增加一个`🔧 自动拓展组`区域，初始为空或包含预设占位。游戏过程中，当出现需要新追踪的数据（如临时状态、特殊羁绊、新增属性）时，AI可在此区域动态追加新的"表情+字段"行，无需修改面板主体结构。\n\n' +
   '## 质量要求：\n' +
   '- 总字数不少于 800 字\n' +
   '- 语言流畅、有感染力，避免机械化的列表感\n' +
@@ -999,6 +869,11 @@ $('btn-to-step-3').addEventListener('click', function() {
 
     var expandedPrompt = await callAI(PROMPT_EXPAND, userMsg, false);
 
+    // 空值保护：AI 返回空内容时给出明确提示
+    if (!expandedPrompt || expandedPrompt.trim().length === 0) {
+      throw new Error('AI 返回了空内容，请检查模型是否正常工作或重新生成');
+    }
+
     genState.prompts = {
       outline: userMsg,
       expanded: expandedPrompt,
@@ -1024,7 +899,7 @@ $('btn-copy-prompt').addEventListener('click', function() {
   setStatus('📋 提示词已复制', 'ok');
 });
 
-// ── Step 3: 重新生成 ──
+// ── Step 3: 重新生成（复用素材和主角上下文） ──
 $('btn-regenerate-prompt').addEventListener('click', function() {
   if (!genState.selectedDraft) return;
 
@@ -1033,7 +908,25 @@ $('btn-regenerate-prompt').addEventListener('click', function() {
     var userMsg = '剧本标题：' + card.title + '\n核心冲突：' + card.conflict +
       '\n详细设定：' + card.desc + '\n标签：' + (card.tags || []).join('、');
 
+    // 追加素材上下文（与 btn-to-step-3 保持一致）
+    if (genState.materials.length > 0) {
+      userMsg += '\n\n【玩家提供的素材】\n';
+      genState.materials.forEach(function(m) {
+        userMsg += '--- ' + m.label + ' ---\n' + m.content + '\n';
+      });
+    }
+
+    // 追加主角身份
+    if (genState.protagonist) {
+      userMsg += '\n【玩家扮演角色】\n' + genState.protagonist + '\n';
+    }
+
     var expandedPrompt = await callAI(PROMPT_EXPAND, userMsg, false);
+
+    // 空值保护
+    if (!expandedPrompt || expandedPrompt.trim().length === 0) {
+      throw new Error('AI 返回了空内容，请检查模型是否正常工作或重新生成');
+    }
 
     genState.prompts = {
       outline: userMsg,
@@ -1342,10 +1235,6 @@ $('btn-mount-folder').addEventListener('click', async function() {
 // Initial render
 renderLibList();
 
-console.log('🎭 剧本格式路由中枢 v2.0 · SPA 架构');
-console.log('📚 剧本库已就绪');
-console.log('✨ 剧本车间已就绪');
-console.log('🤖 AI 反应堆待配置');
 // ═══════════════════════════════════════
 //  樱花 WebGL 背景 (动态创建 Canvas)
 // ═══════════════════════════════════════
@@ -1619,7 +1508,7 @@ function initSakuraBg(){
   // --- 后处理 ---
   var postProcess = {};
   function renderPostProcess(){
-    gl.enable(gl.TEXTURE_2D);gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.DEPTH_TEST);
     var bindRT=function(rt,isclear){gl.bindFramebuffer(gl.FRAMEBUFFER,rt.frameBuffer);gl.viewport(0,0,rt.width,rt.height);if(isclear){gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);}};
     bindRT(renderSpec.wHalfRT0,true);
     useEffect(effectLib.mkBrightBuf,renderSpec.mainRT);
@@ -1694,15 +1583,29 @@ function initSakuraBg(){
   timeInfo.start = new Date();
   timeInfo.prev = timeInfo.start;
 
+  var sakuraReqId = null;
   function animate(){
-    var curdate = new Date();
-    timeInfo.elapsed = (curdate - timeInfo.start) / 1000.0;
-    timeInfo.delta = (curdate - timeInfo.prev) / 1000.0;
-    timeInfo.prev = curdate;
-    requestAnimationFrame(animate);
-    renderScene();
+    try {
+      var curdate = new Date();
+      timeInfo.elapsed = (curdate - timeInfo.start) / 1000.0;
+      timeInfo.delta = (curdate - timeInfo.prev) / 1000.0;
+      timeInfo.prev = curdate;
+      renderScene();
+      sakuraReqId = requestAnimationFrame(animate);
+    } catch(e) {
+      console.warn('Sakura WebGL 渲染降级:', e);
+      if (sakuraReqId) cancelAnimationFrame(sakuraReqId);
+      // 降级：清空 canvas，退化为纯色背景
+      try {
+        var ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#0a0a1a';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+      } catch(_) {}
+    }
   }
-  animate();
+  sakuraReqId = requestAnimationFrame(animate);
 }
 
 // 启动樱花背景

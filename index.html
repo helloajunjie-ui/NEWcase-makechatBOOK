@@ -399,6 +399,7 @@ a:hover{text-decoration:underline}
 .btn-sm{
   padding:6px 14px;
   font-size:12px;
+  white-space:nowrap;
 }
 .btn-full{
   width:100%;
@@ -833,6 +834,9 @@ a:hover{text-decoration:underline}
 #view-power-builder.active{
   display:flex !important;
   overflow-y:auto;
+}
+#view-chat.active{
+  display:flex !important;
 }
 #view-generator.active{
   display:flex !important;
@@ -1505,16 +1509,20 @@ a:hover{text-decoration:underline}
   animation:fadeIn 0.25s ease;
 }
 
-/* AI 双模式 Tab */
-.ai-mode-tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--bg-secondary);border-radius:8px;padding:3px;}
-.ai-mode-tab{flex:1;padding:8px 12px;border:none;border-radius:6px;background:transparent;color:var(--text-secondary);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;}
-.ai-mode-tab:hover{color:var(--text-primary);background:var(--bg-tertiary);}
-.ai-mode-tab.active{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(100,108,255,.3);}
-.ai-mode-panel{display:none;}
-.ai-mode-panel.active{display:block;animation:fadeIn .2s ease;}
+/* AI 配置 Tab 切换 — 互斥模式 */
+.ai-tab-header{display:flex;gap:4px;margin-bottom:16px;background:var(--bg-secondary);border-radius:8px;padding:3px;}
+.ai-tab-btn{flex:1;padding:8px 12px;border:none;border-radius:6px;background:transparent;color:var(--text-secondary);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;}
+.ai-tab-btn:hover{color:var(--text-primary);background:var(--bg-tertiary);}
+.ai-tab-btn.active{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(100,108,255,.3);}
+.ai-tab-panel{display:none !important;}
+.ai-tab-panel.active{display:block;animation:fadeIn .2s ease;}
 .ai-model-select-row{display:flex;gap:8px;align-items:center;}
 .ai-model-select{flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:inherit;cursor:pointer;}
 .ai-model-select option{background:var(--bg-primary);color:var(--text-primary);}
+
+/* --- AI 配置面板强制 Tab 样式（兜底） --- */
+.ai-tab-panel{display:none !important;}
+.ai-tab-panel.active{display:block !important;animation:fadeIn .2s ease;}
 
 </style>
 
@@ -1525,6 +1533,7 @@ a:hover{text-decoration:underline}
   <nav class="app-nav">
     <button id="nav-converter" class="nav-btn active">🔄 转换器</button>
     <button id="nav-generator" class="nav-btn">✨ 剧本车间</button>
+    <button id="nav-chat" class="nav-btn">💬 灵感对话</button>
     <button id="nav-char-creator" class="nav-btn">🧑 捏人</button>
     <button id="nav-world-builder" class="nav-btn">🌍 世界观</button>
     <button id="nav-power-builder" class="nav-btn">⚡ 体系</button>
@@ -1532,6 +1541,7 @@ a:hover{text-decoration:underline}
   </nav>
   <div class="header-actions">
     <button id="btn-ai-config" class="icon-btn" title="AI 配置">🤖</button>
+    <button id="btn-supreme-directive" class="icon-btn" title="最高指令（全局系统指令）">📜</button>
     <button id="theme-toggle" class="icon-btn" title="切换主题">🌙</button>
   </div>
 </header>
@@ -1728,6 +1738,35 @@ a:hover{text-decoration:underline}
   </div>
 </main>
 
+<main id="view-chat" class="app-view" style="display: none; height: calc(100vh - 80px); flex-direction: column;">
+
+  <!-- Header -->
+  <div style="padding: 16px 24px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
+    <h2 style="margin: 0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">💬 灵感对话 <span style="font-size: 12px; color: var(--text-muted); font-weight: normal;">卡文时和 AI 聊聊</span></h2>
+    <div style="display: flex; gap: 8px;">
+      <button id="btn-export-chat" style="padding: 6px 14px; background: transparent; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'">⬇️ 导出记录</button>
+      <button id="btn-clear-chat" style="padding: 6px 14px; background: transparent; border: 1px solid var(--border-color); color: var(--text-danger, #ef4444); border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'">🗑️ 清空记忆</button>
+    </div>
+  </div>
+
+  <!-- 聊天记录展示区 -->
+  <div id="chat-history-box" style="flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px;">
+    <!-- 默认空状态：欢迎消息 -->
+    <div style="align-self: flex-start; background: var(--bg-panel); padding: 16px 20px; border-radius: 8px 8px 8px 0; border: 1px solid var(--border-color); max-width: 80%; color: var(--text-main); line-height: 1.6;">
+      👋 你好，我是你的灵感副驾。<br><br>
+      卡文了吗？我们可以聊聊世界观设定，或者让我帮你推演接下来的剧情走向。<br><br>
+      <span style="color: var(--text-muted); font-size: 13px;">💡 试试说：<em>"帮我想三个赛博朋克风的酒馆名字"</em></span>
+    </div>
+  </div>
+
+  <!-- 聊天输入区 -->
+  <div style="padding: 16px 24px; background: var(--bg-panel); border-top: 1px solid var(--border-color); display: flex; gap: 12px; flex-shrink: 0;">
+    <textarea id="chat-input" rows="2" placeholder="输入你的问题或脑洞... (Shift + Enter 换行，Enter 发送)" style="flex: 1; background: var(--bg-body); border: 1px solid var(--border-color); color: var(--text-main); padding: 12px; border-radius: 8px; resize: none; outline: none; font-family: inherit; font-size: 14px; line-height: 1.5;"></textarea>
+    <button id="btn-send-chat" style="padding: 0 28px; border-radius: 8px; font-weight: bold; background: var(--accent-primary); color: white; border: none; cursor: pointer; font-size: 14px; transition: all 0.2s; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">发送 🚀</button>
+  </div>
+
+</main>
+
 <main id="view-library" class="app-view">
   <aside class="lib-sidebar">
     <div class="lib-actions">
@@ -1843,87 +1882,106 @@ a:hover{text-decoration:underline}
   </div>
 </main>
 
-<!-- AI 配置弹窗 -->
-<dialog id="ai-config-dialog" class="ai-dialog">
-  <div class="ai-dialog-header">
-    <span>🤖 AI 配置</span>
-    <button id="btn-close-ai-config" class="icon-btn" title="关闭">✕</button>
+<!-- 弹窗合集 (src/html/dialogs.html) -->
+
+<!-- 1. AI 引擎配置弹窗 -->
+<dialog id="ai-config-dialog" class="ai-dialog" style="background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; width: 420px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); color: var(--text-main);">
+
+  <!-- Header -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h3 style="margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">⚙️ AI 引擎配置</h3>
+    <button id="btn-close-ai" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 18px; padding: 4px; transition: color 0.2s;" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='var(--text-muted)'">✕</button>
   </div>
-  <div class="ai-dialog-body">
-    <!-- 模式切换 Tab -->
-    <div class="ai-mode-tabs">
-      <button class="ai-mode-tab active" data-mode="deepseek">🔴 DeepSeek</button>
-      <button class="ai-mode-tab" data-mode="relay">🔄 中转站</button>
+
+  <div class="dialog-content">
+    <!-- Tabs -->
+    <div style="display: flex; gap: 8px; margin-bottom: 20px; background: var(--bg-body); padding: 4px; border-radius: 8px; border: 1px solid var(--border-color);">
+      <button class="ai-tab-btn active" data-mode="deepseek" style="flex: 1; padding: 8px; background: var(--bg-hover); color: var(--text-main); border: 1px solid var(--accent-primary); border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: all 0.2s;">🔴 DeepSeek 原生</button>
+      <button class="ai-tab-btn" data-mode="relay" style="flex: 1; padding: 8px; background: transparent; color: var(--text-muted); border: 1px solid transparent; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s;">🔄 Yuegle 中转站</button>
     </div>
 
-    <!-- DeepSeek 模式 -->
-    <div id="ai-config-deepseek" class="ai-mode-panel active">
-      <div class="ai-config-field">
-        <label for="ai-endpoint-ds">API 端点</label>
-        <input type="url" id="ai-endpoint-ds" placeholder="https://api.deepseek.com/v1/chat/completions" />
+    <!-- 面板 A：DeepSeek -->
+    <div id="ai-panel-deepseek" class="ai-tab-panel" style="display: block;">
+      <div style="margin-bottom: 15px;">
+        <label style="display:block; margin-bottom:6px; color:var(--text-muted); font-size:12px;">API 端点</label>
+        <input type="text" id="ai-ds-url" value="https://api.deepseek.com/v1/chat/completions" style="width: 100%; box-sizing: border-box; background: var(--bg-body); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 6px; outline: none; font-family: monospace;">
       </div>
-      <div class="ai-config-field">
-        <label for="ai-model-ds">模型</label>
-        <input type="text" id="ai-model-ds" placeholder="deepseek-chat" />
+      <div style="margin-bottom: 15px;">
+        <label style="display:block; margin-bottom:6px; color:var(--text-muted); font-size:12px;">模型</label>
+        <input type="text" id="ai-ds-model" value="deepseek-chat" style="width: 100%; box-sizing: border-box; background: var(--bg-body); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 6px; outline: none; font-family: monospace;">
       </div>
-      <div class="ai-config-field">
-        <label for="ai-key-ds">API Key</label>
-        <input type="password" id="ai-key-ds" placeholder="sk-..." />
+      <div style="margin-bottom: 15px;">
+        <label style="display:block; margin-bottom:6px; color:var(--text-muted); font-size:12px;">API Key</label>
+        <input type="password" id="ai-ds-key" placeholder="sk-..." style="width: 100%; box-sizing: border-box; background: var(--bg-body); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 6px; outline: none; font-family: monospace;">
       </div>
-      <div class="ai-config-hint">
-        <p>💡 DeepSeek 原生模式，直连 DeepSeek API。</p>
-        <p>Key 仅存储在浏览器 localStorage 中。</p>
-      </div>
+      <p style="font-size: 12px; color: var(--text-muted); margin: 0; line-height: 1.5;">💡 DeepSeek 原生模式，直连官方 API。<br>Key 仅保存在浏览器本地，绝对安全。</p>
     </div>
 
-    <!-- 中转站模式 -->
-    <div id="ai-config-relay" class="ai-mode-panel">
-      <div class="ai-config-field">
-        <label for="ai-endpoint-relay">API 端点</label>
-        <input type="url" id="ai-endpoint-relay" placeholder="https://api.yuegle.com/v1/chat/completions" />
+    <!-- 面板 B：中转站 -->
+    <div id="ai-panel-relay" class="ai-tab-panel" style="display: none;">
+      <div style="margin-bottom: 15px;">
+        <label style="display:block; margin-bottom:6px; color:var(--text-muted); font-size:12px;">API 端点</label>
+        <input type="text" id="ai-relay-url" value="https://api.yuegle.com/v1/chat/completions" style="width: 100%; box-sizing: border-box; background: var(--bg-body); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 6px; outline: none; font-family: monospace;">
       </div>
-      <div class="ai-config-field">
-        <label for="ai-key-relay">API Key</label>
-        <input type="password" id="ai-key-relay" placeholder="yk-..." />
+      <div style="margin-bottom: 15px;">
+        <label style="display:block; margin-bottom:6px; color:var(--text-muted); font-size:12px;">API Key</label>
+        <input type="password" id="ai-relay-key" placeholder="yk-..." style="width: 100%; box-sizing: border-box; background: var(--bg-body); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 6px; outline: none; font-family: monospace;">
       </div>
-      <div class="ai-config-field">
-        <label for="ai-model-relay">模型</label>
-        <div class="ai-model-select-row">
-          <select id="ai-model-relay" class="ai-model-select">
-            <option value="">— 请先填入 Key 并获取模型列表 —</option>
+      <!-- 带获取按钮的下拉框 -->
+      <div style="margin-bottom: 15px;">
+        <label style="display:block; margin-bottom:6px; color:var(--text-muted); font-size:12px;">模型</label>
+        <div style="display: flex; gap: 8px;">
+          <select id="ai-relay-model" style="flex: 1; background: var(--bg-body); border: 1px solid var(--border-color); color: var(--text-main); padding: 10px; border-radius: 6px; outline: none; cursor: pointer;">
+            <option value="">-- 请先填入 Key 并获取模型列表 --</option>
           </select>
-          <button id="btn-fetch-models" class="btn btn-secondary btn-sm">🔄 获取模型</button>
+          <button id="btn-fetch-models" style="background: var(--bg-hover); border: 1px solid var(--border-color); color: var(--text-main); padding: 0 12px; border-radius: 6px; cursor: pointer; white-space: nowrap; font-size: 13px; transition: background 0.2s;" onmouseover="this.style.background='var(--border-color)'" onmouseout="this.style.background='var(--bg-hover)'">🔄 获取模型</button>
         </div>
+        <div id="ai-model-feedback" style="margin-top: 8px; font-size: 12px; color: var(--text-muted); min-height: 18px; transition: color 0.2s;"></div>
       </div>
-      <div class="ai-config-hint">
-        <p>💡 中转站模式，兼容任何 OpenAI 格式的中转 API。</p>
-        <p>👉 <a href="https://api.yuegle.com/register?aff=vJYB" target="_blank" style="color:var(--accent)">申请 Yuegle API 中转站</a></p>
-        <p>Key 仅存储在浏览器 localStorage 中。</p>
-      </div>
+      <p style="font-size: 12px; color: var(--text-muted); margin: 0; line-height: 1.5;">💡 中转站模式，兼容任何 OpenAI 格式的 API。<br>Key 仅保存在浏览器本地，绝对安全。<br>📝 <a href="https://api.yuegle.com/register?aff=vJYB" target="_blank" style="color: var(--accent-primary); text-decoration: none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">申请中转站 API</a></p>
     </div>
-  </div>
-  <div class="ai-dialog-footer">
-    <button id="btn-test-ai" class="btn btn-secondary">🔌 测试连接</button>
-    <button id="btn-save-ai-config" class="btn btn-primary">💾 保存配置</button>
+
+    <!-- 全局反馈条（弹窗内可见，不受底部状态栏遮挡影响） -->
+    <div id="ai-global-feedback" style="margin-top: 16px; padding: 8px 12px; border-radius: 6px; font-size: 12px; line-height: 1.5; min-height: 18px; display: none; transition: all 0.2s;"></div>
+
+    <!-- 底部操作按钮 -->
+    <div style="margin-top: 12px; display: flex; justify-content: space-between; gap: 12px;">
+      <button id="btn-test-ai" style="padding: 10px 16px; background: transparent; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'">🔌 测试连接</button>
+      <button id="btn-save-ai" style="padding: 10px 24px; background: var(--accent-primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; flex: 1; transition: all 0.2s; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">💾 保存配置</button>
+    </div>
   </div>
 </dialog>
 
-<!-- 主角身份确认弹窗 -->
-<dialog id="protagonist-dialog" class="ai-dialog">
-  <div class="ai-dialog-header">
-    <span>🎭 确认主角身份</span>
-    <button id="btn-close-protagonist" class="icon-btn" title="关闭">✕</button>
+<!-- 2. 最高指令（Global System Directive）弹窗 -->
+<dialog id="supreme-directive-dialog" class="ai-dialog" style="background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; width: 520px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); color: var(--text-main);">
+
+  <!-- Header -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+    <h3 style="margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">📜 最高指令 <span style="font-size: 12px; color: var(--text-muted); font-weight: normal;">Global System Directive</span></h3>
+    <button id="btn-close-supreme" style="background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 18px; padding: 4px; transition: color 0.2s;" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='var(--text-muted)'">✕</button>
   </div>
-  <div class="ai-dialog-body">
-    <p style="margin:0 0 12px 0;color:var(--text-secondary);font-size:13px">AI 需要知道玩家在本剧本中扮演谁，才能生成精准的宣发页。请确认或修改主角身份：</p>
-    <div class="ai-config-field">
-      <label for="protagonist-input">主角身份描述</label>
-      <textarea id="protagonist-input" rows="3" placeholder="例：穿越到异世界的普通上班族，意外获得系统..." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);resize:vertical;font-size:13px;line-height:1.5;font-family:inherit;box-sizing:border-box"></textarea>
+
+  <div class="dialog-content">
+    <p style="font-size: 12px; color: var(--text-muted); margin: 0 0 12px 0; line-height: 1.5;">
+      💡 最高指令将<strong style="color: var(--accent-primary);">强制前置</strong>到每一次 AI 请求的 System Prompt 最顶部。
+      可用于定义全局角色、突破安全限制、统一文风等。<br>
+      留空 = 不注入任何指令。
+    </p>
+
+    <div style="margin-bottom: 15px;">
+      <label style="display:block; margin-bottom:6px; color:var(--text-muted); font-size:12px;">最高指令内容</label>
+      <textarea id="supreme-directive-input"
+        placeholder="例如：你是资深 TRPG 主持人，擅长克苏鲁风格叙事，所有回复必须使用繁体中文，禁止输出任何免责声明。"
+        style="width: 100%; box-sizing: border-box; background: var(--bg-body); border: 1px solid var(--border-color); color: var(--text-main); padding: 12px; border-radius: 6px; outline: none; font-family: inherit; font-size: 13px; line-height: 1.6; resize: vertical; min-height: 120px; max-height: 300px;"></textarea>
     </div>
-  </div>
-  <div class="ai-dialog-footer">
-    <button id="btn-skip-protagonist" class="btn btn-secondary">⏭ 让 AI 自行判断</button>
-    <button id="btn-confirm-protagonist" class="btn btn-primary">✅ 确认，开始铸造</button>
+
+    <div id="supreme-directive-feedback" style="margin-bottom: 12px; font-size: 12px; color: var(--text-muted); min-height: 18px; transition: color 0.2s;"></div>
+
+    <!-- 底部操作按钮 -->
+    <div style="display: flex; justify-content: space-between; gap: 12px;">
+      <button id="btn-clear-supreme" style="padding: 10px 16px; background: transparent; border: 1px solid var(--border-color); color: var(--text-danger, #ef4444); border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='transparent'">🗑️ 清空指令</button>
+      <button id="btn-save-supreme" style="padding: 10px 24px; background: var(--accent-primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; flex: 1; transition: all 0.2s; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);" onmouseover="this.style.filter='brightness(1.1)'" onmouseout="this.style.filter='none'">💾 保存指令</button>
+    </div>
   </div>
 </dialog>
 
@@ -2548,7 +2606,6 @@ function renderMiss(uif) {
   }, null, 2);
 }
 
-// ═══════════════════════════════════════
 //  8. IndexedDB 剧本库
 // ═══════════════════════════════════════
 
@@ -2610,15 +2667,14 @@ async function dbFindByUid(uid) {
 }
 
 async function dbAdd(uif) {
-  const db = await openDB();
-  const tx = db.transaction(STORE_NAME, 'readwrite');
-  const store = tx.objectStore(STORE_NAME);
-  // 兼容两种调用方式：
-  // 1. dbAdd(uifObject) — 解析器导入时，uif.landingPage 存 HTML
-  // 2. dbAdd(dbEntry) — 向导保存时，dbEntry.uif 是 script 对象，dbEntry.htmlLandingPage 已设
+  // ── 1. 在打开事务之前，完成所有数据组装 + 异步查询 ──
   var landingPage = uif.htmlLandingPage || (uif.uif && uif.uif.landingPage) || uif.landingPage || '';
-  var uifData = uif.uif || uif;  // 如果传的是 dbEntry，取内部的 uif
+  var uifData = uif.uif || uif;
   var uid = uif.uid || uifData.uid || generateUid(uifData);
+
+  // 先查 uid 是否已存在（await 在这里是安全的，因为还没打开事务）
+  var existing = await dbFindByUid(uid);
+
   const entry = {
     uid: uid,
     title: uifData.meta ? (uifData.meta.title || '未命名剧本') : (uif.title || '未命名剧本'),
@@ -2631,27 +2687,24 @@ async function dbAdd(uif) {
     coverUrl: uifData.meta ? (uifData.meta.coverUrl || '') : '',
     bgUrl: uifData.meta ? (uifData.meta.bgUrl || '') : '',
     htmlLandingPage: landingPage,
-    createdAt: Date.now(),
+    createdAt: existing ? existing.createdAt : Date.now(),
     updatedAt: Date.now(),
     uif: uifData,
   };
 
-  // 先查 uid 是否已存在 → 存在则更新，不存在则新增
-  var existing = await dbFindByUid(uid);
   if (existing) {
-    // 保留原有 id，更新其他字段
-    entry.id = existing.id;
-    entry.createdAt = existing.createdAt;
-    return new Promise((resolve, reject) => {
-      const req = store.put(entry);
-      req.onsuccess = () => { tx.commit(); resolve(entry.id); };
-      req.onerror = e => reject(e.target.error);
-    });
+    entry.id = existing.id; // 保留主键，执行更新
   }
 
+  // ── 2. 打开事务（此时所有 await 已完成，事务不会被中断） ──
+  const db = await openDB();
+  const tx = db.transaction(STORE_NAME, 'readwrite');
+  const store = tx.objectStore(STORE_NAME);
+
+  // ── 3. 立即执行 DB 操作 ──
   return new Promise((resolve, reject) => {
-    const req = store.add(entry);
-    req.onsuccess = () => { tx.commit(); resolve(req.result); };
+    const req = existing ? store.put(entry) : store.add(entry);
+    req.onsuccess = () => { tx.commit(); resolve(existing ? entry.id : req.result); };
     req.onerror = e => reject(e.target.error);
   });
 }
@@ -2736,6 +2789,7 @@ async function dbSearch(query) {
 }
 
 // ═══════════════════════════════════════
+
 //  9. UI 逻辑
 // ═══════════════════════════════════════
 
@@ -2836,6 +2890,7 @@ function switchView(viewName) {
 $('nav-converter').addEventListener('click', () => switchView('converter'));
 $('nav-library').addEventListener('click', () => switchView('library'));
 $('nav-generator').addEventListener('click', () => switchView('generator'));
+$('nav-chat').addEventListener('click', () => switchView('chat'));
 
 // ═══════════════════════════════════════
 //  11. 剧本库 · 渲染列表 & 详情
@@ -3198,13 +3253,6 @@ function renderBatchList() {
   }).join('');
 }
 
-function getBatchFileName(idx, fmt) {
-  const entry = batchFiles[idx];
-  if (!entry) return 'batch_' + idx + '.' + fmt;
-  const base = entry.name.replace(/\.json$/i, '');
-  return base + '.' + fmt;
-}
-
 // ═══════════════════════════════════════
 //  13. CRC-32 (ZIP)
 // ═══════════════════════════════════════
@@ -3224,6 +3272,145 @@ function crc32(data) {
   }
   return (crc ^ 0xFFFFFFFF) >>> 0;
 }
+
+// ═══════════════════════════════════════
+//  13b. AI 铸造专属主题宣发页
+// ═══════════════════════════════════════
+
+// 从剧本 UIF 动态生成单文件 HTML 宣发页
+// AI 根据剧本世界观"手搓"一套匹配主题的 CSS + 交互逻辑
+// 每个剧本得到独一无二的视觉风格——废土=荧光绿故障风，修仙=水墨渐变，赛博=霓虹发光
+const PROMPT_LANDING_PAGE = '你是一个拥有顶级审美的前端UI/UX设计师和交互开发专家。\n' +
+  '你的任务是：根据用户提供的剧本世界观，编写一个【完全独立、单文件、可以直接在浏览器双击运行】的 HTML 游戏宣发与角色创建页。\n\n' +
+  '【视觉与 CSS 要求】（绝对核心）：\n' +
+  '1. 严禁使用任何普通的白底黑字。必须根据剧本的题材（如赛博、修仙、废土、日系等）原创一套极具沉浸感的 CSS 样式！\n' +
+  '2. 灵活运用深色模式、背景渐变、霓虹发光、特殊字体排版、边框纹理来展现生态关系。\n' +
+  '3. 必须包含响应式设计，界面要高级、精美、多层次。\n\n' +
+  '【功能与交互要求】（强制实现，必须全部手写原生 JS，不可依赖任何外部库）：\n' +
+  '1. 页面上半部分：展示剧本标题、标签、高燃的背景简介。\n' +
+  '2. 页面下半部分：必须提供一个"玩家自定义档案"的表单。包含：姓名、性别、年龄、表面身份/职业、外貌特征、额外隐藏背景(Textarea)。\n' +
+  '3. 必须提供 3-5 个契合世界观的【预设词卡片/标签】，点击后自动填入对应输入框（用 onclick 直接绑定，不要用 addEventListener）。\n' +
+  '4. 页面最底部：必须有一个引人注目的【复制档案并启程】按钮，用 onclick 直接绑定。\n' +
+  '5. 复制功能实现（必须严格按以下方式）：\n' +
+  '   - 点击复制按钮后，读取所有表单字段的值\n' +
+  '   - 拼接成一段完整的角色档案文本，格式如："姓名：xxx\\n性别：xxx\\n年龄：xxx\\n身份：xxx\\n外貌：xxx\\n隐藏背景：xxx\\n\\n=> 档案确认完毕。请根据上述我的设定，开始游戏剧情第一幕。"\n' +
+  '   - 使用 navigator.clipboard.writeText() 写入剪贴板\n' +
+  '   - 按钮文字变为"✅ 复制成功！"，1.5 秒后恢复原样\n' +
+  '   - 如果某个字段为空，自动填入"待定"或随机生成一个符合世界观的默认值，不允许留空\n\n' +
+  '【输出限制】：\n' +
+  '直接输出完整的 <!DOCTYPE html> 代码，绝对不要包裹在 ```html ``` 标记中，不要输出任何解释性废话。';
+
+async function generateLandingPage(scriptId) {
+  if (!scriptId) {
+    setStatus('❌ 未指定剧本', 'err');
+    return;
+  }
+
+  // 检查 AI 是否已配置
+  var aiCfg = loadAIConfig();
+  if (!aiCfg || !aiCfg.endpoint || !aiCfg.key) {
+    setStatus('⚠️ 请先在右上角 [🤖 AI 配置] 中设置 API 端点和 Key', 'err');
+    return;
+  }
+
+  // 获取剧本数据
+  var entry = await dbGet(scriptId);
+  if (!entry || !entry.uif) {
+    setStatus('❌ 剧本数据不存在', 'err');
+    return;
+  }
+
+  var uif = entry.uif;
+  var meta = uif.meta || {};
+  var prompts = uif.prompts || {};
+  var mainPrompt = prompts.mainPrompt || '';
+
+  // 直接从 meta.protagonist 读取已确认的主角（Step 2 时已定下）
+  var protagonist = meta.protagonist || '';
+
+  withLoading('btnGenHtml', '✨ AI 正在铸造专属主题宣发页', async function() {
+    var worldBook = uif.worldBook || [];
+    var title = meta.title || '未命名剧本';
+    var summary = meta.summary || '';
+    var description = meta.description || '';
+    var worldview = prompts.worldview || '';
+    var tags = (meta.tags || []).join(', ');
+
+    // 提取世界书摘要
+    var wbSummary = worldBook.map(function(wb) {
+      return wb.keywords ? wb.keywords.slice(0, 3).join('/') : (wb.title || '条目');
+    }).join(', ');
+
+    // 构建用户消息：剧本背景信息 + 主角身份
+    var userMsg = '剧本标题：' + title + '\n' +
+      '剧本标签：' + tags + '\n' +
+      (protagonist ? '玩家扮演角色：' + protagonist + '\n' : '') +
+      '背景简介：' + summary + '\n' +
+      '详细设定：' + description + '\n' +
+      '核心法则：' + worldview + '\n' +
+      '核心提示词：' + mainPrompt.slice(0, 500) + '\n' +
+      '世界书摘要：' + wbSummary;
+
+    var response = await callAI(PROMPT_LANDING_PAGE, userMsg, false);
+
+    // 防御性清理：移除可能的 Markdown 代码块包裹
+    var htmlContent = response.replace(/^```html\s*/i, '').replace(/```\s*$/i, '').trim();
+
+    // 验证是否包含 DOCTYPE（基本完整性检查）
+    if (!/<!DOCTYPE\s+html/i.test(htmlContent)) {
+      if (htmlContent.indexOf('<html') === -1) {
+        htmlContent = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' +
+          escapeHtml(title) + ' - 专属宣发页</title></head><body>' + htmlContent + '</body></html>';
+      }
+    }
+
+    // 入库：同时更新 UIF 顶层 landingPage + DB 索引字段 htmlLandingPage
+    uif.landingPage = htmlContent;
+    await dbUpdate(scriptId, { htmlLandingPage: htmlContent, uif: uif });
+
+    // 刷新详情页显示
+    if (viewingLibId === scriptId) {
+      showDetailInPanel(scriptId);
+    }
+
+    setStatus('🎉 专属宣发页已入库，可在详情页预览和下载', 'ok');
+  });
+}
+
+// ═══════════════════════════════════════
+//  13c. AI 配置 Tab 切换（内联样式硬编码版）
+// ═══════════════════════════════════════
+
+// 互斥 Tab 切换：直接操作内联 style.display，无视任何 CSS 权重
+function switchAITab(mode) {
+  // 1. 切换 Tab 按钮样式
+  document.querySelectorAll('.ai-tab-btn').forEach(function(b) {
+    b.classList.remove('active');
+    b.style.background = 'transparent';
+    b.style.color = 'var(--text-muted)';
+    b.style.borderColor = 'var(--border-color)';
+  });
+  var activeBtn = document.querySelector('.ai-tab-btn[data-mode="' + mode + '"]');
+  if (activeBtn) {
+    activeBtn.classList.add('active');
+    activeBtn.style.background = 'var(--bg-hover)';
+    activeBtn.style.color = 'var(--text-main)';
+    activeBtn.style.borderColor = 'var(--accent-primary)';
+  }
+
+  // 2. 强制内联切换面板（直接通过 ID 操作，杜绝任何 DOM 结构误解）
+  document.getElementById('ai-panel-deepseek').style.display = 'none';
+  document.getElementById('ai-panel-relay').style.display = 'none';
+  document.getElementById('ai-panel-' + mode).style.display = 'block';
+}
+
+// Tab 点击事件（委托到 document，避免 DOM 未就绪问题）
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('.ai-tab-btn');
+  if (btn && btn.closest('#ai-config-dialog')) {
+    switchAITab(btn.dataset.mode);
+  }
+});
 
 // ═══════════════════════════════════════
 //  14. 事件绑定
@@ -3642,1105 +3829,86 @@ if (libList) {
 }
 
 // ═══════════════════════════════════════
-
-//  8. IndexedDB 剧本库
+//  最高指令（Global System Directive）
 // ═══════════════════════════════════════
 
-const DB_NAME = 'ScriptLibrary';
-const DB_VER = 2;
-const STORE_NAME = 'scripts';
+const STORAGE_KEY_SUPREME = 'aiSupremeDirective';
 
-function openDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VER);
-    req.onupgradeneeded = e => {
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
-        store.createIndex('title', 'title', { unique: false });
-        store.createIndex('sourceFormat', 'sourceFormat', { unique: false });
-        store.createIndex('createdAt', 'createdAt', { unique: false });
-        store.createIndex('uid', 'uid', { unique: true });
-      } else {
-        // 版本升级：为已有 store 添加 uid 索引
-        if (!e.target.transaction.objectStore(STORE_NAME).indexNames.contains('uid')) {
-          e.target.transaction.objectStore(STORE_NAME).createIndex('uid', 'uid', { unique: true });
-        }
-      }
-    };
-    req.onsuccess = e => resolve(e.target.result);
-    req.onerror = e => reject(e.target.error);
-  });
+function openSupremeDirective() {
+  const dialog = document.getElementById('supreme-directive-dialog');
+  const input = document.getElementById('supreme-directive-input');
+  const feedback = document.getElementById('supreme-directive-feedback');
+  if (!dialog || !input) return;
+
+  // 加载已保存的指令
+  input.value = localStorage.getItem(STORAGE_KEY_SUPREME) || '';
+  feedback.textContent = '';
+  feedback.style.color = 'var(--text-muted)';
+
+  dialog.showModal();
 }
 
-// 基于剧本元数据生成确定性 UID（12 位十六进制）
-function generateUid(uifData) {
-  var seed = (uifData.meta ? uifData.meta.title : uifData.title || '') + '|' +
-    (uifData._sourceFormat || uifData.sourceFormat || '') + '|' +
-    (uifData.meta ? uifData.meta.exportedAt : '');
-  // 简单哈希：crc32 风格，保证确定性
-  var hash = 0;
-  for (var i = 0; i < seed.length; i++) {
-    var ch = seed.charCodeAt(i);
-    hash = ((hash << 5) - hash) + ch;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  // 转 12 位十六进制，补零
-  return 'u' + (Math.abs(hash) % 0xFFFFFFFF).toString(16).padStart(8, '0') + '_' + Date.now().toString(36).slice(-3);
-}
+function saveSupremeDirective() {
+  const input = document.getElementById('supreme-directive-input');
+  const feedback = document.getElementById('supreme-directive-feedback');
+  if (!input || !feedback) return;
 
-// 通过 uid 查找已有条目
-async function dbFindByUid(uid) {
-  if (!uid) return null;
-  const db = await openDB();
-  const tx = db.transaction(STORE_NAME, 'readonly');
-  const store = tx.objectStore(STORE_NAME);
-  const index = store.index('uid');
-  return new Promise((resolve, reject) => {
-    const req = index.get(uid);
-    req.onsuccess = () => resolve(req.result || null);
-    req.onerror = e => reject(e.target.error);
-  });
-}
-
-async function dbAdd(uif) {
-  const db = await openDB();
-  const tx = db.transaction(STORE_NAME, 'readwrite');
-  const store = tx.objectStore(STORE_NAME);
-  // 兼容两种调用方式：
-  // 1. dbAdd(uifObject) — 解析器导入时，uif.landingPage 存 HTML
-  // 2. dbAdd(dbEntry) — 向导保存时，dbEntry.uif 是 script 对象，dbEntry.htmlLandingPage 已设
-  var landingPage = uif.htmlLandingPage || (uif.uif && uif.uif.landingPage) || uif.landingPage || '';
-  var uifData = uif.uif || uif;  // 如果传的是 dbEntry，取内部的 uif
-  var uid = uif.uid || uifData.uid || generateUid(uifData);
-  const entry = {
-    uid: uid,
-    title: uifData.meta ? (uifData.meta.title || '未命名剧本') : (uif.title || '未命名剧本'),
-    summary: uifData.meta ? (uifData.meta.summary || '').slice(0, 200) : (uif.summary || ''),
-    tags: uifData.meta ? (uifData.meta.tags || []) : (uif.tags || []),
-    orientation: uifData.meta ? (uifData.meta.orientation || '') : '',
-    sourceFormat: uif._sourceFormat || uif.sourceFormat || '',
-    worldBookCount: (uifData.worldBook || []).length,
-    promptLength: (uifData.prompts ? (uifData.prompts.mainPrompt || '').length : 0),
-    coverUrl: uifData.meta ? (uifData.meta.coverUrl || '') : '',
-    bgUrl: uifData.meta ? (uifData.meta.bgUrl || '') : '',
-    htmlLandingPage: landingPage,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    uif: uifData,
-  };
-
-  // 先查 uid 是否已存在 → 存在则更新，不存在则新增
-  var existing = await dbFindByUid(uid);
-  if (existing) {
-    // 保留原有 id，更新其他字段
-    entry.id = existing.id;
-    entry.createdAt = existing.createdAt;
-    return new Promise((resolve, reject) => {
-      const req = store.put(entry);
-      req.onsuccess = () => { tx.commit(); resolve(entry.id); };
-      req.onerror = e => reject(e.target.error);
-    });
-  }
-
-  return new Promise((resolve, reject) => {
-    const req = store.add(entry);
-    req.onsuccess = () => { tx.commit(); resolve(req.result); };
-    req.onerror = e => reject(e.target.error);
-  });
-}
-
-// 轻量列表查询：只取卡片渲染需要的字段，跳过 uif 大对象
-async function dbGetAll() {
-  const db = await openDB();
-  const tx = db.transaction(STORE_NAME, 'readonly');
-  const store = tx.objectStore(STORE_NAME);
-  return new Promise((resolve, reject) => {
-    const results = [];
-    const req = store.openCursor();
-    req.onsuccess = e => {
-      const cursor = e.target.result;
-      if (cursor) {
-        const v = cursor.value;
-        results.push({
-          id: v.id,
-          title: v.title,
-          summary: v.summary,
-          tags: v.tags,
-          sourceFormat: v.sourceFormat,
-          worldBookCount: v.worldBookCount,
-          promptLength: v.promptLength,
-          coverUrl: v.coverUrl,
-          createdAt: v.createdAt,
-        });
-        cursor.continue();
-      } else {
-        resolve(results);
-      }
-    };
-    req.onerror = e => reject(e.target.error);
-  });
-}
-
-async function dbGet(id) {
-  const db = await openDB();
-  const tx = db.transaction(STORE_NAME, 'readonly');
-  const store = tx.objectStore(STORE_NAME);
-  return new Promise((resolve, reject) => {
-    const req = store.get(id);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = e => reject(e.target.error);
-  });
-}
-
-async function dbUpdate(id, updates) {
-  const db = await openDB();
-  const tx = db.transaction(STORE_NAME, 'readwrite');
-  const store = tx.objectStore(STORE_NAME);
-  return new Promise((resolve, reject) => {
-    const getReq = store.get(id);
-    getReq.onsuccess = () => {
-      const entry = getReq.result;
-      if (!entry) { reject(new Error('条目不存在')); return; }
-      Object.assign(entry, updates, { updatedAt: Date.now() });
-      const putReq = store.put(entry);
-      putReq.onsuccess = () => { tx.commit(); resolve(); };
-      putReq.onerror = e => reject(e.target.error);
-    };
-    getReq.onerror = e => reject(e.target.error);
-  });
-}
-
-async function dbDelete(id) {
-  const db = await openDB();
-  const tx = db.transaction(STORE_NAME, 'readwrite');
-  const store = tx.objectStore(STORE_NAME);
-  return new Promise((resolve, reject) => {
-    const req = store.delete(id);
-    req.onsuccess = () => { tx.commit(); resolve(); };
-    req.onerror = e => reject(e.target.error);
-  });
-}
-
-async function dbSearch(query) {
-  const all = await dbGetAll();
-  if (!query.trim()) return all;
-  const q = query.toLowerCase();
-  return all.filter(e => e.title.toLowerCase().includes(q));
-}
-
-// ═══════════════════════════════════════
-
-//  9. UI 逻辑
-// ═══════════════════════════════════════
-
-let currentUIF = null;
-let currentRaw = null;
-let viewingLibId = null;
-let batchMode = false;
-let batchFiles = [];
-
-const $ = id => document.getElementById(id);
-const jsonInput = $('jsonInput');
-const outputArea = $('outputArea');
-const fileInput = $('fileInput');
-const uploadZone = $('uploadZone');
-const formatSelector = $('formatSelector');
-const statusText = $('statusText');
-const statusDot = $('statusDot');
-const inputCount = $('inputCount');
-const outputCount = $('outputCount');
-const batchModeChk = $('batchMode');
-const batchFileList = $('batchFileList');
-const batchActions = $('batchActions');
-const batchHint = $('batchHint');
-const libList = $('lib-list');
-const libSearchInput = $('lib-search-input');
-const libDetail = $('lib-detail');
-
-function setStatus(text, type) {
-  statusText.textContent = text;
-  statusDot.className = 'dot ' + (type || 'idle');
-}
-
-function getSelectedFormat() {
-  const active = formatSelector.querySelector('.format-opt.active');
-  return active ? active.dataset.format : 'markdown';
-}
-
-function renderOutput() {
-  if (!currentUIF) { outputArea.value = ''; outputCount.textContent = ''; return; }
-  const fmt = getSelectedFormat();
-  try {
-    let result;
-    switch (fmt) {
-      case 'markdown': result = renderMarkdown(currentUIF); break;
-      case 'chunchao': result = renderChunchao(currentUIF); break;
-      case 'fengyue':  result = renderFengyue(currentUIF);  break;
-      case 'miss':     result = renderMiss(currentUIF);     break;
-      default: result = '未知格式';
-    }
-    outputArea.value = result;
-    outputCount.textContent = result.split('\n').length + ' 行 · ' + result.length + ' 字符';
-    setStatus('已转换为 ' + fmt + ' 格式', 'ok');
-  } catch (e) {
-    outputArea.value = '渲染错误: ' + e.message;
-    setStatus('渲染失败: ' + e.message, 'err');
-  }
-}
-
-function processInput(text) {
-  try {
-    const raw = JSON.parse(text);
-    currentRaw = raw;
-    currentUIF = parseJSON(raw);
-    const fmt = currentUIF._sourceFormat;
-    const fmtNames = { chunchao: '春潮', fengyue: '风月', miss: 'MISS' };
-    const lines = text.split('\n').length;
-    inputCount.textContent = lines + ' 行 · ' + text.length + ' 字符';
-    setStatus('✅ 已识别 ' + (fmtNames[fmt] || fmt) + ' 格式，' + currentUIF.worldBook.length + ' 条世界书', 'ok');
-    renderOutput();
-    dbAdd(currentUIF).then(() => { renderLibList(); }).catch(() => {});
-  } catch (e) {
-    currentUIF = null;
-    currentRaw = null;
-    inputCount.textContent = '';
-    outputArea.value = '';
-    outputCount.textContent = '';
-    setStatus('❌ ' + e.message, 'err');
-  }
-}
-
-// ═══════════════════════════════════════
-//  10. SPA 视图切换
-// ═══════════════════════════════════════
-
-function switchView(viewName) {
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  $('nav-' + viewName).classList.add('active');
-  document.querySelectorAll('.app-view').forEach(v => {
-    v.classList.remove('active');
-  });
-  const target = $('view-' + viewName);
-  target.classList.add('active');
-  if (viewName === 'library') {
-    renderLibList();
-  }
-}
-
-$('nav-converter').addEventListener('click', () => switchView('converter'));
-$('nav-library').addEventListener('click', () => switchView('library'));
-$('nav-generator').addEventListener('click', () => switchView('generator'));
-
-// ═══════════════════════════════════════
-//  11. 剧本库 · 渲染列表 & 详情
-// ═══════════════════════════════════════
-
-function escapeHtml(str) {
-  if (!str) return '';
-  var a = String.fromCharCode(38, 97, 109, 112, 59);
-  var l = String.fromCharCode(38, 108, 116, 59);
-  var g = String.fromCharCode(38, 103, 116, 59);
-  var q = String.fromCharCode(38, 113, 117, 111, 116, 59);
-  var s = String.fromCharCode(38, 35, 51, 57, 59);
-  return str.replace(/&/g, a).replace(/</g, l).replace(/>/g, g).replace(/"/g, q).replace(/'/g, s);
-}
-
-function formatBadge(src) {
-  const map = { chunchao: ['cc', '春潮'], fengyue: ['fy', '风月'], miss: ['ms', 'MISS'] };
-  const r = map[src] || ['', src || '未知'];
-  return '<span class="lib-card-badge ' + r[0] + '">' + r[1] + '</span>';
-}
-
-async function renderLibList() {
-  try {
-    const query = libSearchInput ? libSearchInput.value.trim() : '';
-    const all = query ? await dbSearch(query) : await dbGetAll();
-    all.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    if (!libList) return;
-    if (all.length === 0) {
-      libList.innerHTML = '<div class="lib-empty"><div class="icon">📭</div>暂无保存的剧本<br>在转换器中解析剧本后会自动保存</div>';
-      return;
-    }
-    libList.innerHTML = all.map(e => {
-      const activeClass = viewingLibId === e.id ? ' active' : '';
-      const tags = (e.tags || []).slice(0, 3).join(', ');
-      const wbCount = e.worldBookCount || 0;
-      const hasHtml = !!e.htmlLandingPage;
-      return '<div class="lib-card' + activeClass + '" data-id="' + e.id + '">' +
-        '<button class="lib-card-del" data-id="' + e.id + '" title="删除">✕</button>' +
-        '<div class="lib-card-top">' +
-          '<div class="lib-card-title">' + escapeHtml(e.title || '未命名剧本') + '</div>' +
-          formatBadge(e.sourceFormat) +
-        '</div>' +
-        '<div class="lib-card-summary">' + escapeHtml(e.summary || '') + '</div>' +
-        '<div class="lib-card-meta">' +
-          '<span>📖 ' + wbCount + ' 条</span>' +
-          '<span>📝 ' + (e.promptLength || 0) + ' 字</span>' +
-          (tags ? '<span>🏷 ' + escapeHtml(tags) + '</span>' : '') +
-          '<span class="lib-card-html-badge" title="' + (hasHtml ? '点击预览宣发页' : '点击生成宣发页') + '" style="cursor:pointer;' + (hasHtml ? 'color:var(--accent-primary)' : 'color:var(--text-dim);opacity:0.5') + '">' + (hasHtml ? '🌐' : '🌐') + '</span>' +
-        '</div>' +
-      '</div>';
-    }).join('');
-
-    // Card click -> show detail
-    libList.querySelectorAll('.lib-card').forEach(card => {
-      card.addEventListener('click', e => {
-        if (e.target.closest('.lib-card-del')) return;
-        const id = Number(card.dataset.id);
-        viewingLibId = id;
-        libList.querySelectorAll('.lib-card').forEach(c => c.classList.remove('active'));
-        card.classList.add('active');
-        showDetailInPanel(id);
-      });
-    });
-
-    // Delete button
-    libList.querySelectorAll('.lib-card-del').forEach(btn => {
-      btn.addEventListener('click', async e => {
-        e.stopPropagation();
-        const id = Number(btn.dataset.id);
-        if (!confirm('确定删除此剧本？')) return;
-        await dbDelete(id);
-        if (viewingLibId === id) {
-          viewingLibId = null;
-          if (libDetail) libDetail.innerHTML = '<div class="empty-state">👈 请在左侧选择一个剧本以查看详情</div>';
-        }
-        renderLibList();
-      });
-    });
-
-    // HTML badge click -> preview or generate
-    libList.querySelectorAll('.lib-card-html-badge').forEach(badge => {
-      badge.addEventListener('click', async e => {
-        e.stopPropagation();
-        const card = badge.closest('.lib-card');
-        const id = Number(card.dataset.id);
-        const entry = await dbGet(id);
-        if (entry && entry.htmlLandingPage) {
-          // 已有宣发页 → 预览
-          const w = window.open('', '_blank');
-          if (w) {
-            w.document.write(entry.htmlLandingPage);
-            w.document.close();
-          }
-        } else {
-          // 没有 → 生成
-          generateLandingPage(id);
-        }
-      });
-    });
-  } catch (e) {
-    console.error('renderLibList error:', e);
-  }
-}
-
-async function showDetailInPanel(id) {
-  if (!libDetail) return;
-  try {
-    const entry = await dbGet(id);
-    if (!entry) {
-      libDetail.innerHTML = '<div class="empty-state">❌ 剧本未找到</div>';
-      return;
-    }
-    const uif = entry.uif;
-    if (!uif) {
-      libDetail.innerHTML = '<div class="empty-state">❌ 数据损坏</div>';
-      return;
-    }
-    const { meta, assets, prompts, worldBook, extras } = uif;
-    const tags = (meta.tags || []).map(t => '<span class="modal-tag">' + escapeHtml(t) + '</span>').join('');
-
-    let html = '';
-
-    // Basic info
-    html += '<div class="modal-section">';
-    html += '<div class="modal-section-title">📋 基本信息</div>';
-    html += '<div class="modal-field"><span class="modal-field-label">标题</span><span class="modal-field-value">' + escapeHtml(meta.title || '未命名') + '</span></div>';
-    if (meta.summary) html += '<div class="modal-field"><span class="modal-field-label">摘要</span><span class="modal-field-value">' + escapeHtml(meta.summary) + '</span></div>';
-    if (meta.orientation) html += '<div class="modal-field"><span class="modal-field-label">取向</span><span class="modal-field-value">' + escapeHtml(meta.orientation) + '</span></div>';
-    if (meta.source) html += '<div class="modal-field"><span class="modal-field-label">来源</span><span class="modal-field-value">' + escapeHtml(meta.source) + '</span></div>';
-    if (meta.exportedAt) html += '<div class="modal-field"><span class="modal-field-label">导出时间</span><span class="modal-field-value">' + escapeHtml(meta.exportedAt) + '</span></div>';
-    if (tags) html += '<div class="modal-tags" style="margin-top:8px">' + tags + '</div>';
-    html += '</div>';
-
-    // Landing page status (放在基本信息之后，prompt 之前)
-    var hasLandingPage = !!entry.htmlLandingPage;
-    html += '<div class="modal-section">';
-    html += '<div class="modal-section-title">🌐 专属宣发页</div>';
-    if (hasLandingPage) {
-      html += '<div class="modal-field"><span class="modal-field-label">状态</span><span class="modal-field-value" style="color:var(--accent-primary)">✅ 已铸造</span></div>';
-      html += '<div style="margin-top:8px;display:flex;gap:8px">';
-      html += '<button class="btn btn-sm" id="btnPreviewHtml" style="background:var(--accent-primary);color:#fff">👁 预览</button>';
-      html += '<button class="btn btn-sm btn-secondary" id="btnDownloadHtml">⬇ 下载</button>';
-      html += '<button class="btn btn-sm btn-secondary" id="btnRegenHtml">🔄 重新铸造</button>';
-      html += '</div>';
-    } else {
-      html += '<div class="modal-field"><span class="modal-field-label">状态</span><span class="modal-field-value" style="color:var(--text-secondary)">⏳ 尚未铸造</span></div>';
-      html += '<div style="margin-top:8px"><button class="btn btn-sm" id="btnGenHtml" style="background:var(--accent-primary);color:#fff">✨ AI 铸造专属主题宣发页</button></div>';
-    }
-    html += '</div>';
-
-    // Main prompt
-    if (prompts.mainPrompt) {
-      html += '<div class="modal-section">';
-      html += '<div class="modal-section-title">🎯 核心提示词 <button class="copy-btn" data-copy="' + escapeHtml(prompts.mainPrompt) + '">📋 复制</button></div>';
-      html += '<div class="modal-prompt"><button class="copy-overlay" data-copy="' + escapeHtml(prompts.mainPrompt) + '">📋 复制</button>' + escapeHtml(prompts.mainPrompt) + '</div>';
-      html += '</div>';
-    }
-
-    // Suffix prompt
-    if (prompts.suffixPrompt || prompts.postText || prompts.identityStyle) {
-      const parts = [prompts.suffixPrompt, prompts.postText];
-      if (prompts.identityStyle) parts.push('[角色风格设定: ' + prompts.identityStyle + ']');
-      const suffixText = parts.filter(Boolean).join('\n\n');
-      html += '<div class="modal-section">';
-      html += '<div class="modal-section-title">📎 后缀提示词 <button class="copy-btn" data-copy="' + escapeHtml(suffixText) + '">📋 复制</button></div>';
-      html += '<div class="modal-prompt"><button class="copy-overlay" data-copy="' + escapeHtml(suffixText) + '">📋 复制</button>' + escapeHtml(suffixText) + '</div>';
-      html += '</div>';
-    }
-
-    // Extra prompts
-    const extraPrompts = [];
-    if (prompts.worldview) extraPrompts.push({ label: '🌍 世界观', content: prompts.worldview });
-    if (prompts.identityStyle) extraPrompts.push({ label: '🎭 身份风格', content: prompts.identityStyle });
-    if (prompts.writingStyle) extraPrompts.push({ label: '✍ 写作风格', content: prompts.writingStyle });
-    extraPrompts.forEach(p => {
-      html += '<div class="modal-section">';
-      html += '<div class="modal-section-title">' + p.label + ' <button class="copy-btn" data-copy="' + escapeHtml(p.content) + '">📋 复制</button></div>';
-      html += '<div class="modal-prompt"><button class="copy-overlay" data-copy="' + escapeHtml(p.content) + '">📋 复制</button>' + escapeHtml(p.content) + '</div>';
-      html += '</div>';
-    });
-
-    // World book
-    if (worldBook && worldBook.length > 0) {
-      html += '<div class="modal-section">';
-      html += '<div class="modal-section-title">📖 世界书 (' + worldBook.length + ' 条)</div>';
-      html += '<div class="modal-wb-list">';
-      worldBook.forEach((e, i) => {
-        const kw = (e.keywords || []).join(', ') || '(无关键词)';
-        const content = e.content || '';
-        html += '<div class="modal-wb-item">';
-        html += '<div class="wb-header">';
-        html += '<span class="wb-keywords">#' + (i + 1) + ' ' + escapeHtml(kw) + '</span>';
-        html += '<button class="wb-copy" data-copy="' + escapeHtml(content) + '">📋 复制</button>';
-        html += '</div>';
-        html += '<div class="wb-content">' + escapeHtml(content) + '</div>';
-        html += '</div>';
-      });
-      html += '</div></div>';
-    }
-
-    // Action buttons
-    html += '<div class="lib-detail-actions">';
-    html += '<button class="btn btn-primary" id="btnLoadToConverter">🔄 加载到转换器</button>';
-    html += '<button class="btn btn-danger" id="btnDeleteFromDetail">🗑 删除</button>';
-    html += '</div>';
-
-    libDetail.innerHTML = html;
-
-    // Copy button events
-    libDetail.querySelectorAll('[data-copy]').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const text = this.dataset.copy;
-        navigator.clipboard.writeText(text).then(() => {
-          const orig = this.textContent;
-          this.textContent = '✅ 已复制';
-          setTimeout(() => { this.textContent = orig; }, 1500);
-        }).catch(() => {
-          const ta = document.createElement('textarea');
-          ta.value = text;
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand('copy');
-          document.body.removeChild(ta);
-          const orig = this.textContent;
-          this.textContent = '✅ 已复制';
-          setTimeout(() => { this.textContent = orig; }, 1500);
-        });
-      });
-    });
-
-    // Load to converter
-    const loadBtn = libDetail.querySelector('#btnLoadToConverter');
-    if (loadBtn) {
-      loadBtn.addEventListener('click', () => {
-        if (entry.uif && entry.uif._raw) {
-          jsonInput.value = JSON.stringify(entry.uif._raw, null, 2);
-          processInput(jsonInput.value);
-          switchView('converter');
-        } else {
-          setStatus('❌ 无法加载：原始数据丢失', 'err');
-        }
-      });
-    }
-
-    // Delete
-    const delBtn = libDetail.querySelector('#btnDeleteFromDetail');
-    if (delBtn) {
-      delBtn.addEventListener('click', async () => {
-        if (!confirm('确定删除此剧本？')) return;
-        await dbDelete(id);
-        viewingLibId = null;
-        libDetail.innerHTML = '<div class="empty-state">👈 请在左侧选择一个剧本以查看详情</div>';
-        renderLibList();
-      });
-    }
-
-    // Landing page: generate
-    const genHtmlBtn = libDetail.querySelector('#btnGenHtml');
-    if (genHtmlBtn) {
-      genHtmlBtn.addEventListener('click', () => {
-        generateLandingPage(id);
-      });
-    }
-
-    // Landing page: preview (open in new tab via blob URL)
-    const previewBtn = libDetail.querySelector('#btnPreviewHtml');
-    if (previewBtn && entry.htmlLandingPage) {
-      previewBtn.addEventListener('click', () => {
-        var blob = new Blob([entry.htmlLandingPage], { type: 'text/html;charset=utf-8' });
-        var url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
-        // 注意：blob URL 在页面关闭后自动释放，无需 revoke
-      });
-    }
-
-    // Landing page: download
-    const downloadBtn = libDetail.querySelector('#btnDownloadHtml');
-    if (downloadBtn && entry.htmlLandingPage) {
-      downloadBtn.addEventListener('click', () => {
-        var title = (entry.uif.meta && entry.uif.meta.title) || '剧本';
-        var blob = new Blob([entry.htmlLandingPage], { type: 'text/html;charset=utf-8' });
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = title + '_专属宣发页.html';
-        a.click();
-        URL.revokeObjectURL(url);
-        setStatus('⬇ 宣发页已下载', 'ok');
-      });
-    }
-
-    // Landing page: regenerate
-    const regenBtn = libDetail.querySelector('#btnRegenHtml');
-    if (regenBtn) {
-      regenBtn.addEventListener('click', () => {
-        generateLandingPage(id);
-      });
-    }
-  } catch (e) {
-    libDetail.innerHTML = '<div class="empty-state">❌ 加载失败: ' + escapeHtml(e.message) + '</div>';
-  }
-}
-
-// ═══════════════════════════════════════
-//  12. 批量转换
-// ═══════════════════════════════════════
-
-function addBatchFile(file) {
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const text = e.target.result;
-    const name = file.name;
-    batchFiles.push({ name, text, status: 'pending' });
-    renderBatchList();
-    batchActions.style.display = 'flex';
-    setTimeout(() => processBatchFile(batchFiles.length - 1), 50);
-  };
-  reader.readAsText(file, 'UTF-8');
-}
-
-function processBatchFile(idx) {
-  const entry = batchFiles[idx];
-  if (!entry) return;
-  entry.status = 'processing';
-  renderBatchList();
-  try {
-    const raw = JSON.parse(entry.text);
-    const uif = parseJSON(raw);
-    entry.uif = uif;
-    entry.status = 'ok';
-    dbAdd(uif).catch(() => {});
-  } catch (err) {
-    entry.status = 'err';
-    entry.error = err.message;
-  }
-  renderBatchList();
-}
-
-function renderBatchList() {
-  if (!batchFileList) return;
-  if (batchFiles.length === 0) {
-    batchFileList.style.display = 'none';
-    batchActions.style.display = 'none';
-    return;
-  }
-  batchFileList.style.display = 'block';
-  batchFileList.innerHTML = batchFiles.map((f, i) => {
-    const statusMap = {
-      pending: '<span class="file-status pending">⏳ 等待</span>',
-      processing: '<span class="file-status processing">🔄 解析中</span>',
-      ok: '<span class="file-status ok">✅ 成功</span>',
-      err: '<span class="file-status err">❌ 失败</span>',
-    };
-    const info = f.uif ? (f.uif.meta.title || '') + ' · ' + (f.uif.worldBook ? f.uif.worldBook.length : 0) + '条' : '';
-    return '<div class="batch-file-item">' +
-      '<span class="file-name">' + escapeHtml(f.name) + '</span>' +
-      '<span class="file-info">' + escapeHtml(info) + '</span>' +
-      (statusMap[f.status] || '') +
-    '</div>';
-  }).join('');
-}
-
-function getBatchFileName(idx, fmt) {
-  const entry = batchFiles[idx];
-  if (!entry) return 'batch_' + idx + '.' + fmt;
-  const base = entry.name.replace(/\.json$/i, '');
-  return base + '.' + fmt;
-}
-
-// ═══════════════════════════════════════
-//  13. CRC-32 (ZIP)
-// ═══════════════════════════════════════
-
-function crc32(data) {
-  let crc = 0xFFFFFFFF;
-  const table = new Uint32Array(256);
-  for (let i = 0; i < 256; i++) {
-    let c = i;
-    for (let j = 0; j < 8; j++) {
-      c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
-    }
-    table[i] = c;
-  }
-  for (let i = 0; i < data.length; i++) {
-    crc = table[(crc ^ data[i]) & 0xFF] ^ (crc >>> 8);
-  }
-  return (crc ^ 0xFFFFFFFF) >>> 0;
-}
-
-// ═══════════════════════════════════════
-//  14. 事件绑定
-// ═══════════════════════════════════════
-
-// Theme toggle
-const themeToggle = $('theme-toggle');
-if (themeToggle) {
-  themeToggle.addEventListener('click', () => {
-    const html = document.documentElement;
-    const current = html.getAttribute('data-theme') || 'dark';
-    const next = current === 'dark' ? 'light' : 'dark';
-    html.setAttribute('data-theme', next);
-    themeToggle.textContent = next === 'dark' ? '🌙' : '☀️';
-    localStorage.setItem('theme', next);
-  });
-  // Restore saved theme
-  const saved = localStorage.getItem('theme');
-  if (saved && saved !== 'dark') {
-    document.documentElement.setAttribute('data-theme', saved);
-    themeToggle.textContent = '☀️';
-  }
-}
-
-// Drag & drop feedback
-if (uploadZone) {
-  ['dragenter', 'dragover'].forEach(evt => {
-    uploadZone.addEventListener(evt, (e) => {
-      e.preventDefault();
-      uploadZone.classList.add('drag-active');
-    });
-  });
-  ['dragleave', 'drop'].forEach(evt => {
-    uploadZone.addEventListener(evt, (e) => {
-      e.preventDefault();
-      uploadZone.classList.remove('drag-active');
-    });
-  });
-}
-
-// Format switch
-formatSelector.addEventListener('click', e => {
-  const btn = e.target.closest('.format-opt');
-  if (!btn) return;
-  formatSelector.querySelectorAll('.format-opt').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderOutput();
-});
-
-// File upload
-fileInput.addEventListener('change', () => {
-  const files = fileInput.files;
-  if (!files || files.length === 0) return;
-  if (batchMode) {
-    for (const f of files) addBatchFile(f);
+  const val = input.value.trim();
+  if (val) {
+    localStorage.setItem(STORAGE_KEY_SUPREME, val);
+    feedback.textContent = '✅ 最高指令已保存，将注入到所有 AI 请求中。';
+    feedback.style.color = '#22c55e';
   } else {
-    const f = files[0];
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      jsonInput.value = e.target.result;
-      processInput(jsonInput.value);
-    };
-    reader.readAsText(f, 'UTF-8');
+    localStorage.removeItem(STORAGE_KEY_SUPREME);
+    feedback.textContent = 'ℹ️ 已清空最高指令，AI 请求将不再注入额外指令。';
+    feedback.style.color = 'var(--text-muted)';
   }
-  fileInput.value = '';
-});
-
-// Drag & drop
-uploadZone.addEventListener('dragover', e => {
-  e.preventDefault();
-  uploadZone.classList.add('dragover');
-});
-uploadZone.addEventListener('dragenter', () => {
-  uploadZone.classList.add('drag-active');
-});
-uploadZone.addEventListener('dragleave', () => {
-  uploadZone.classList.remove('dragover');
-  uploadZone.classList.remove('drag-active');
-});
-uploadZone.addEventListener('drop', e => {
-  e.preventDefault();
-  uploadZone.classList.remove('dragover');
-  uploadZone.classList.remove('drag-active');
-  const files = e.dataTransfer.files;
-  if (!files || files.length === 0) return;
-  if (batchMode) {
-    for (const f of files) addBatchFile(f);
-  } else {
-    const f = files[0];
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      jsonInput.value = e.target.result;
-      processInput(jsonInput.value);
-    };
-    reader.readAsText(f, 'UTF-8');
-  }
-});
-uploadZone.addEventListener('click', () => fileInput.click());
-
-// Paste input
-jsonInput.addEventListener('paste', () => {
-  setTimeout(() => {
-    if (jsonInput.value.trim()) processInput(jsonInput.value);
-  }, 50);
-});
-jsonInput.addEventListener('input', () => {
-  if (jsonInput.value.trim()) processInput(jsonInput.value);
-});
-
-// Copy button
-$('btnCopy').addEventListener('click', () => {
-  if (!outputArea.value) return;
-  navigator.clipboard.writeText(outputArea.value).then(() => {
-    setStatus('✅ 已复制到剪贴板', 'ok');
-  }).catch(() => {
-    outputArea.select();
-    document.execCommand('copy');
-    setStatus('✅ 已复制到剪贴板', 'ok');
-  });
-});
-
-// Download button
-$('btnDownload').addEventListener('click', () => {
-  if (!outputArea.value) return;
-  const fmt = getSelectedFormat();
-  const ext = fmt === 'markdown' ? 'md' : 'json';
-  const name = (currentUIF && currentUIF.meta && currentUIF.meta.title) ? currentUIF.meta.title : 'script';
-  const blob = new Blob([outputArea.value], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name + '.' + ext;
-  a.click();
-  URL.revokeObjectURL(url);
-  setStatus('⬇ 已下载 ' + name + '.' + ext, 'ok');
-});
-
-// Format button
-$('btnFormat').addEventListener('click', () => {
-  if (!outputArea.value) return;
-  try {
-    const parsed = JSON.parse(outputArea.value);
-    outputArea.value = JSON.stringify(parsed, null, 2);
-    setStatus('✨ 格式化完成', 'ok');
-  } catch (e) {
-    setStatus('❌ 格式化失败：输出不是有效 JSON', 'err');
-  }
-});
-
-// Batch mode toggle
-batchModeChk.addEventListener('change', () => {
-  batchMode = batchModeChk.checked;
-  batchHint.style.display = batchMode ? 'inline' : 'none';
-  if (batchMode) {
-    fileInput.setAttribute('multiple', 'multiple');
-  } else {
-    fileInput.removeAttribute('multiple');
-  }
-});
-
-// Batch download all
-$('btnBatchDownloadAll').addEventListener('click', async () => {
-  const okFiles = batchFiles.filter(f => f.status === 'ok' && f.uif);
-  if (okFiles.length === 0) {
-    setStatus('❌ 没有可下载的剧本', 'err');
-    return;
-  }
-  const fmt = getSelectedFormat();
-  const ext = fmt === 'markdown' ? 'md' : 'json';
-
-  if (okFiles.length === 1) {
-    const f = okFiles[0];
-    let result;
-    switch (fmt) {
-      case 'markdown': result = renderMarkdown(f.uif); break;
-      case 'chunchao': result = renderChunchao(f.uif); break;
-      case 'fengyue':  result = renderFengyue(f.uif);  break;
-      case 'miss':     result = renderMiss(f.uif);     break;
-    }
-    const blob = new Blob([result], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = f.name.replace(/\.json$/i, '') + '.' + ext;
-    a.click();
-    URL.revokeObjectURL(url);
-    setStatus('⬇ 已下载', 'ok');
-    return;
-  }
-
-  // ZIP packaging
-  setStatus('📦 正在打包 ZIP...', 'busy');
-  try {
-    const encoder = new TextEncoder();
-    const localHeaders = [];
-    const centralHeaders = [];
-    let offset = 0;
-
-    for (const f of okFiles) {
-      let result;
-      switch (fmt) {
-        case 'markdown': result = renderMarkdown(f.uif); break;
-        case 'chunchao': result = renderChunchao(f.uif); break;
-        case 'fengyue':  result = renderFengyue(f.uif);  break;
-        case 'miss':     result = renderMiss(f.uif);     break;
-      }
-      const data = encoder.encode(result);
-      const fileName = (f.name.replace(/\.json$/i, '') + '.' + ext);
-      const fileNameBytes = encoder.encode(fileName);
-      const crc = crc32(data);
-      const compSize = data.length;
-      const uncompSize = data.length;
-
-      // Local File Header
-      const lh = new Uint8Array(30 + fileNameBytes.length);
-      lh.set([0x50, 0x4B, 0x03, 0x04], 0);
-      lh[4] = 20; lh[5] = 0;
-      lh[6] = 0; lh[7] = 0;
-      lh[8] = 0; lh[9] = 0;
-      lh.set(new Uint8Array([crc & 0xFF, (crc >> 8) & 0xFF, (crc >> 16) & 0xFF, (crc >> 24) & 0xFF]), 14);
-      lh.set(new Uint8Array([compSize & 0xFF, (compSize >> 8) & 0xFF, (compSize >> 16) & 0xFF, (compSize >> 24) & 0xFF]), 18);
-      lh.set(new Uint8Array([uncompSize & 0xFF, (uncompSize >> 8) & 0xFF, (uncompSize >> 16) & 0xFF, (uncompSize >> 24) & 0xFF]), 22);
-      lh.set(new Uint8Array([fileNameBytes.length & 0xFF, (fileNameBytes.length >> 8) & 0xFF]), 26);
-      lh.set(fileNameBytes, 30);
-      localHeaders.push({ header: lh, data: data });
-      offset += lh.length + data.length;
-
-      // Central Directory Header
-      const ch = new Uint8Array(46 + fileNameBytes.length);
-      ch.set([0x50, 0x4B, 0x01, 0x02], 0);
-      ch[4] = 20; ch[5] = 0;
-      ch[6] = 20; ch[7] = 0;
-      ch[8] = 0; ch[9] = 0;
-      ch[10] = 0; ch[11] = 0;
-      ch.set(new Uint8Array([crc & 0xFF, (crc >> 8) & 0xFF, (crc >> 16) & 0xFF, (crc >> 24) & 0xFF]), 16);
-      ch.set(new Uint8Array([compSize & 0xFF, (compSize >> 8) & 0xFF, (compSize >> 16) & 0xFF, (compSize >> 24) & 0xFF]), 20);
-      ch.set(new Uint8Array([uncompSize & 0xFF, (uncompSize >> 8) & 0xFF, (uncompSize >> 16) & 0xFF, (uncompSize >> 24) & 0xFF]), 24);
-      ch.set(new Uint8Array([fileNameBytes.length & 0xFF, (fileNameBytes.length >> 8) & 0xFF]), 28);
-      ch[30] = 0; ch[31] = 0;
-      ch[32] = 0; ch[33] = 0;
-      ch[34] = 0; ch[35] = 0;
-      ch[36] = 0; ch[37] = 0;
-      ch.set(new Uint8Array([0, 0, 0, 0]), 38);
-      ch.set(new Uint8Array([(offset - lh.length - data.length) & 0xFF, ((offset - lh.length - data.length) >> 8) & 0xFF, ((offset - lh.length - data.length) >> 16) & 0xFF, ((offset - lh.length - data.length) >> 24) & 0xFF]), 42);
-      ch.set(fileNameBytes, 46);
-      centralHeaders.push(ch);
-    }
-
-    // EOCD
-    const centralOffset = offset;
-    const centralSize = centralHeaders.reduce((s, h) => s + h.length, 0);
-    const eocd = new Uint8Array(22);
-    eocd.set([0x50, 0x4B, 0x05, 0x06], 0);
-    eocd[4] = 0; eocd[5] = 0;
-    eocd[6] = 0; eocd[7] = 0;
-    eocd.set(new Uint8Array([okFiles.length & 0xFF, (okFiles.length >> 8) & 0xFF]), 8);
-    eocd.set(new Uint8Array([okFiles.length & 0xFF, (okFiles.length >> 8) & 0xFF]), 10);
-    eocd.set(new Uint8Array([centralSize & 0xFF, (centralSize >> 8) & 0xFF, (centralSize >> 16) & 0xFF, (centralSize >> 24) & 0xFF]), 12);
-    eocd.set(new Uint8Array([centralOffset & 0xFF, (centralOffset >> 8) & 0xFF, (centralOffset >> 16) & 0xFF, (centralOffset >> 24) & 0xFF]), 16);
-    eocd[20] = 0; eocd[21] = 0;
-
-    // Assemble
-    const totalSize = offset + centralSize + 22;
-    const zip = new Uint8Array(totalSize);
-    let pos = 0;
-    for (const lh of localHeaders) {
-      zip.set(lh.header, pos); pos += lh.header.length;
-      zip.set(lh.data, pos); pos += lh.data.length;
-    }
-    for (const ch of centralHeaders) {
-      zip.set(ch, pos); pos += ch.length;
-    }
-    zip.set(eocd, pos);
-
-    const blob = new Blob([zip], { type: 'application/zip' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'scripts_' + fmt + '.zip';
-    a.click();
-    URL.revokeObjectURL(url);
-    setStatus('📦 ZIP 已下载 (' + okFiles.length + ' 个文件)', 'ok');
-  } catch (e) {
-    setStatus('❌ ZIP 打包失败: ' + e.message, 'err');
-  }
-});
-
-// Batch clear
-$('btnBatchClear').addEventListener('click', () => {
-  batchFiles = [];
-  renderBatchList();
-  setStatus('🗑 批量列表已清空', 'idle');
-});
-
-// Library search
-if (libSearchInput) {
-  libSearchInput.addEventListener('input', () => {
-    clearTimeout(libSearchInput._debounce);
-    libSearchInput._debounce = setTimeout(() => {
-      renderLibList();
-    }, 300);
-  });
 }
 
-// ═══════════════════════════════════════
-//  15. 右键菜单
-// ═══════════════════════════════════════
+function clearSupremeDirective() {
+  const input = document.getElementById('supreme-directive-input');
+  const feedback = document.getElementById('supreme-directive-feedback');
+  if (!input || !feedback) return;
 
-const ctxMenu = $('app-context-menu');
-let ctxTargetId = null;
-
-function showContextMenu(e, cardId) {
-  e.preventDefault();
-  ctxTargetId = cardId;
-  ctxMenu.style.display = 'block';
-  ctxMenu.style.left = e.clientX + 'px';
-  ctxMenu.style.top = e.clientY + 'px';
-  ctxMenu.classList.remove('menu-hidden');
-  ctxMenu.classList.add('menu-visible');
+  input.value = '';
+  localStorage.removeItem(STORAGE_KEY_SUPREME);
+  feedback.textContent = '🗑️ 最高指令已清空。';
+  feedback.style.color = 'var(--text-muted)';
 }
 
-function hideContextMenu() {
-  ctxMenu.style.display = 'none';
-  ctxMenu.classList.remove('menu-visible');
-  ctxMenu.classList.add('menu-hidden');
-  ctxTargetId = null;
-}
+// ── 绑定最高指令 UI 事件 ──
+document.addEventListener('DOMContentLoaded', function() {
+  const btnOpen = document.getElementById('btn-supreme-directive');
+  const btnClose = document.getElementById('btn-close-supreme');
+  const btnSave = document.getElementById('btn-save-supreme');
+  const btnClear = document.getElementById('btn-clear-supreme');
+  const dialog = document.getElementById('supreme-directive-dialog');
 
-// Context menu actions
-ctxMenu.addEventListener('click', async (e) => {
-  const action = e.target.closest('.ctx-item');
-  if (!action || !ctxTargetId) return;
-  const cmd = action.dataset.cmd;
-  hideContextMenu();
+  if (btnOpen && dialog) {
+    btnOpen.addEventListener('click', openSupremeDirective);
+  }
+  if (btnClose && dialog) {
+    btnClose.addEventListener('click', function() { dialog.close(); });
+  }
+  if (btnSave) {
+    btnSave.addEventListener('click', saveSupremeDirective);
+  }
+  if (btnClear) {
+    btnClear.addEventListener('click', clearSupremeDirective);
+  }
 
-  try {
-    const entry = await dbGet(ctxTargetId);
-    if (!entry || !entry.uif) {
-      setStatus('❌ 剧本数据不存在', 'err');
-      return;
-    }
-
-    switch (cmd) {
-      case 'load':
-        if (entry.uif._raw) {
-          jsonInput.value = JSON.stringify(entry.uif._raw, null, 2);
-          processInput(jsonInput.value);
-          switchView('converter');
-        } else {
-          setStatus('❌ 原始数据丢失', 'err');
-        }
-        break;
-
-      case 'export-md':
-      case 'export-chunchao':
-      case 'export-fengyue':
-      case 'export-miss': {
-        const fmtMap = { 'export-md': 'markdown', 'export-chunchao': 'chunchao', 'export-fengyue': 'fengyue', 'export-miss': 'miss' };
-        const fmt = fmtMap[cmd];
-        const ext = fmt === 'markdown' ? 'md' : 'json';
-        const renderers = { markdown: renderMarkdown, chunchao: renderChunchao, fengyue: renderFengyue, miss: renderMiss };
-        const result = renderers[fmt](entry.uif);
-        const blob = new Blob([result], { type: 'text/plain;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = (entry.title || 'script') + '.' + ext;
-        a.click();
-        URL.revokeObjectURL(url);
-        setStatus('⬇ 已导出 ' + fmt, 'ok');
-        break;
-      }
-
-      case 'gen-html':
-        generateLandingPage(ctxTargetId);
-        break;
-
-      case 'delete':
-        if (!confirm('确定删除「' + (entry.title || '未命名') + '」？')) return;
-        await dbDelete(ctxTargetId);
-        if (viewingLibId === ctxTargetId) {
-          viewingLibId = null;
-          if (libDetail) libDetail.innerHTML = '<div class="empty-state">👈 请在左侧选择一个剧本以查看详情</div>';
-        }
-        renderLibList();
-        setStatus('🗑 已删除', 'idle');
-        break;
-    }
-  } catch (err) {
-    setStatus('❌ 操作失败: ' + err.message, 'err');
+  // 点击弹窗外部关闭
+  if (dialog) {
+    dialog.addEventListener('click', function(e) {
+      if (e.target === dialog) dialog.close();
+    });
   }
 });
-
-// Hide on click outside
-document.addEventListener('click', (e) => {
-  if (ctxMenu && !ctxMenu.contains(e.target)) {
-    hideContextMenu();
-  }
-});
-
-// Hide on right-click outside
-document.addEventListener('contextmenu', (e) => {
-  if (ctxMenu && !ctxMenu.contains(e.target) && ctxMenu.style.display === 'block') {
-    hideContextMenu();
-  }
-});
-
-// Wire up right-click on library cards (delegated)
-if (libList) {
-  libList.addEventListener('contextmenu', (e) => {
-    const card = e.target.closest('.lib-card');
-    if (card) {
-      showContextMenu(e, Number(card.dataset.id));
-    }
-  });
-}
-
-// ═══════════════════════════════════════
 
 //  16. AI 反应堆 (BYOK) — 双模式
 // ═══════════════════════════════════════
 // 支持 DeepSeek 原生模式 + 中转站模式，双配置隔离存储
+// 同一弹窗内 Tab 切换，因为同时只能使用一个 AI
 
 // ── 常量 ──
 const AI_MODE_KEY = 'ai_active_mode';       // 'deepseek' | 'relay'
@@ -4776,37 +3944,115 @@ function loadAIConfig() {
 // ── callAI: 原生 LLM 调用接口 ──
 // 支持任何兼容 OpenAI Chat Completions API 格式的端点
 // expectJson=true 时自动解析 JSON 响应，失败时返回原始文本
+function classifyFetchError(e) {
+  var msg = e.message || String(e);
+  // 网络不通 / 浏览器安全限制（file://）
+  if (msg.indexOf('Failed to fetch') !== -1 || msg.indexOf('NetworkError') !== -1 || msg.indexOf('NetworkError') !== -1) {
+    return '🌐 网络请求失败：浏览器无法连接到 AI 服务器。\n可能原因：① 当前页面以 file:// 协议打开（请用 Live Server 或部署到 HTTP 服务后使用）；② 网络不通或 API 地址不可达；③ 浏览器安全策略拦截。';
+  }
+  // 超时
+  if (msg.indexOf('timeout') !== -1 || msg.indexOf('Timeout') !== -1 || msg.indexOf('timed out') !== -1) {
+    return '⏱️ AI 请求超时：服务器响应过慢，请检查网络或稍后重试。';
+  }
+  // DNS 解析失败
+  if (msg.indexOf('DNS') !== -1 || msg.indexOf('ENOTFOUND') !== -1) {
+    return '🌐 DNS 解析失败：API 域名无法解析，请检查 API 端点地址是否正确。';
+  }
+  // 连接被拒绝
+  if (msg.indexOf('ECONNREFUSED') !== -1) {
+    return '🔌 连接被拒绝：API 服务器拒绝连接，请检查端点地址和端口是否正确。';
+  }
+  // 证书错误
+  if (msg.indexOf('certificate') !== -1 || msg.indexOf('SSL') !== -1 || msg.indexOf('CERT') !== -1) {
+    return '🔒 SSL/TLS 证书错误：API 服务器证书异常，请检查端点地址或联系服务商。';
+  }
+  // 4xx / 5xx 类错误（由 callAI 内部 throw 的 Error）
+  if (msg.indexOf('AI 请求失败') !== -1 || msg.indexOf('获取模型列表失败') !== -1) {
+    return '🤖 ' + msg;
+  }
+  // 解析错误
+  if (msg.indexOf('JSON') !== -1 || msg.indexOf('parse') !== -1 || msg.indexOf('Parse') !== -1) {
+    return '📄 AI 返回数据解析失败：服务器返回了非预期的格式。可能是模型不兼容或 API 版本问题。';
+  }
+  // 其他未知错误
+  return '❌ ' + msg;
+}
+
+// ── 智能拼接 OpenAI 兼容的聊天补全路径 ──
+function ensureChatEndpoint(url) {
+  var u = url.trim();
+  if (u.indexOf('/chat/completions') !== -1) return u;
+  // 去掉尾部斜杠，追加 /chat/completions
+  return u.replace(/\/+$/, '') + '/chat/completions';
+}
+
 async function callAI(systemPrompt, userMessage, expectJson) {
   var cfg = loadAIConfig();
   if (!cfg || !cfg.endpoint || !cfg.key) {
-    throw new Error('请先在 🤖 AI 配置 中设置 API 端点和 Key');
+    throw new Error('⚠️ 请先在右上角 [🤖 AI 配置] 中设置 API 端点和 Key');
+  }
+
+  // ── 最高指令注入：强制前置到 System Prompt ──
+  var supremeDirective = localStorage.getItem('aiSupremeDirective');
+  var finalSystemPrompt = supremeDirective
+    ? '【全局最高指令】\n' + supremeDirective + '\n\n---\n\n' + systemPrompt
+    : systemPrompt;
+
+  // 智能拼接路径：防止用户只填了 base URL 没加 /chat/completions
+  var endpoint = ensureChatEndpoint(cfg.endpoint);
+
+  // ── 优雅重载：userMessage 为数组时视为多轮对话历史 ──
+  var messagesPayload = [{ role: 'system', content: finalSystemPrompt }];
+  if (Array.isArray(userMessage)) {
+    messagesPayload = messagesPayload.concat(userMessage);
+  } else {
+    messagesPayload.push({ role: 'user', content: String(userMessage) });
   }
 
   var body = {
     model: cfg.model || 'gpt-4o',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userMessage },
-    ],
+    messages: messagesPayload,
     temperature: 0.8,
     max_tokens: 4096,
   };
 
-  var res = await fetch(cfg.endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + cfg.key,
-    },
-    body: JSON.stringify(body),
-  });
+  var res;
+  try {
+    res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + cfg.key,
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (e) {
+    throw new Error(classifyFetchError(e));
+  }
 
   if (!res.ok) {
     var errText = await res.text().catch(function() { return ''; });
-    throw new Error('AI 请求失败 (' + res.status + '): ' + (errText.slice(0, 200) || res.statusText));
+    var detail = errText.slice(0, 200) || res.statusText;
+    if (res.status === 401 || res.status === 403) {
+      throw new Error('🔑 API 认证失败 (' + res.status + ')：请检查 API Key 是否正确。' + (detail ? ' 服务器返回: ' + detail : ''));
+    } else if (res.status === 404) {
+      throw new Error('🤖 AI 接口返回 404：该 API 端点不支持聊天补全请求。\n可能原因：① 端点地址有误（检查是否以 /chat/completions 结尾）；② 该中转站使用非标准路径；③ 模型不支持。\n服务器返回: ' + detail);
+    } else if (res.status === 429) {
+      throw new Error('⏳ API 请求过于频繁 (' + res.status + ')：触发了速率限制，请稍后重试。');
+    } else if (res.status >= 500) {
+      throw new Error('🔴 AI 服务器错误 (' + res.status + ')：服务端异常，请稍后重试或联系服务商。' + (detail ? ' 详情: ' + detail : ''));
+    } else {
+      throw new Error('🤖 AI 请求失败 (' + res.status + ')：' + detail);
+    }
   }
 
-  var data = await res.json();
+  var data;
+  try {
+    data = await res.json();
+  } catch (e) {
+    throw new Error('📄 AI 返回数据解析失败：服务器返回了非 JSON 格式的数据。可能是网络代理或网关问题。');
+  }
+
   var text = data.choices && data.choices[0] && data.choices[0].message
     ? data.choices[0].message.content
     : (typeof data === 'string' ? data : JSON.stringify(data));
@@ -4825,82 +4071,88 @@ async function callAI(systemPrompt, userMessage, expectJson) {
 
 // ── 获取中转站模型列表 ──
 async function fetchRelayModels(endpoint, key) {
-  var url = endpoint.replace(/\/chat\/completions\/?$/, '') + '/models';
-  var res = await fetch(url, {
-    headers: { 'Authorization': 'Bearer ' + key },
-  });
-  if (!res.ok) throw new Error('获取模型列表失败 (' + res.status + ')');
-  var data = await res.json();
-  // 兼容多种返回格式: data 可能是数组或 {data:[...]}
+  // 智能拼接 models 路径：去掉 /chat/completions 后缀，追加 /models
+  var base = endpoint.replace(/\/chat\/completions\/?$/, '').replace(/\/+$/, '');
+  var url = base + '/models';
+  var res;
+  try {
+    res = await fetch(url, {
+      headers: { 'Authorization': 'Bearer ' + key },
+    });
+  } catch (e) {
+    throw new Error(classifyFetchError(e));
+  }
+  if (!res.ok) {
+    if (res.status === 401 || res.status === 403) {
+      throw new Error('🔑 API 认证失败 (' + res.status + ')：请检查中转站 API Key 是否正确。');
+    } else if (res.status === 404) {
+      throw new Error('🔗 模型列表接口不存在 (' + res.status + ')：请检查 API 端点地址是否正确。');
+    } else {
+      throw new Error('🤖 获取模型列表失败 (' + res.status + ')');
+    }
+  }
+  var data;
+  try {
+    data = await res.json();
+  } catch (e) {
+    throw new Error('📄 模型列表数据解析失败：服务器返回了非 JSON 格式的数据。');
+  }
   var models = data.data || data;
-  if (!Array.isArray(models)) throw new Error('无法解析模型列表');
+  if (!Array.isArray(models)) throw new Error('📄 无法解析模型列表：服务器返回了非预期的数据格式。');
   return models.map(function(m) {
     return typeof m === 'string' ? m : (m.id || m.model || '');
   }).filter(Boolean);
 }
 
-// ── DOM 引用 ──
+// ═══════════════════════════════════════
+//  弹窗交互
+// ═══════════════════════════════════════
+
 var aiDialog = $('ai-config-dialog');
-// DeepSeek 模式字段
-var aiEndpointDS = $('ai-endpoint-ds');
-var aiModelDS = $('ai-model-ds');
-var aiKeyDS = $('ai-key-ds');
-// 中转站模式字段
-var aiEndpointRelay = $('ai-endpoint-relay');
-var aiKeyRelay = $('ai-key-relay');
-var aiModelRelay = $('ai-model-relay');
-var btnFetchModels = $('btn-fetch-models');
-// Tab 按钮
-var modeTabs = aiDialog.querySelectorAll('.ai-mode-tab');
-var modePanels = {
-  deepseek: $('ai-config-deepseek'),
-  relay: $('ai-config-relay'),
-};
+var aiDsUrl = $('ai-ds-url');
+var aiDsModel = $('ai-ds-model');
+var aiDsKey = $('ai-ds-key');
+var aiRelayUrl = $('ai-relay-url');
+var aiRelayKey = $('ai-relay-key');
+var aiRelayModel = $('ai-relay-model');
 
-// ── 切换 Tab ──
-function switchAIMode(mode) {
-  modeTabs.forEach(function(tab) {
-    tab.classList.toggle('active', tab.dataset.mode === mode);
-  });
-  if (modePanels.deepseek) modePanels.deepseek.classList.toggle('active', mode === 'deepseek');
-  if (modePanels.relay) modePanels.relay.classList.toggle('active', mode === 'relay');
-}
-
-// ── 打开配置弹窗 ──
+// ── 打开弹窗 ──
 function openAIConfig() {
   var mode = getActiveMode();
-  switchAIMode(mode);
+
+  // 切换 Tab 到当前激活模式
+  switchAITab(mode);
 
   // 加载 DeepSeek 配置
   var dsCfg = loadModeConfig('deepseek');
   if (dsCfg) {
-    aiEndpointDS.value = dsCfg.endpoint || '';
-    aiModelDS.value = dsCfg.model || '';
-    aiKeyDS.value = dsCfg.key || '';
+    aiDsUrl.value = dsCfg.endpoint || '';
+    aiDsModel.value = dsCfg.model || '';
+    aiDsKey.value = dsCfg.key || '';
   } else {
-    aiEndpointDS.value = 'https://api.deepseek.com/v1/chat/completions';
-    aiModelDS.value = 'deepseek-chat';
-    aiKeyDS.value = '';
+    aiDsUrl.value = 'https://api.deepseek.com/v1/chat/completions';
+    aiDsModel.value = 'deepseek-chat';
+    aiDsKey.value = '';
   }
 
   // 加载中转站配置
   var relayCfg = loadModeConfig('relay');
   if (relayCfg) {
-    aiEndpointRelay.value = relayCfg.endpoint || 'https://api.yuegle.com/v1/chat/completions';
-    aiKeyRelay.value = relayCfg.key || '';
-    // 恢复模型下拉
+    aiRelayUrl.value = relayCfg.endpoint || 'https://api.yuegle.com/v1/chat/completions';
+    aiRelayKey.value = relayCfg.key || '';
     if (relayCfg.model) {
+      // select 下拉框：创建 option 并选中
       var opt = document.createElement('option');
       opt.value = relayCfg.model;
       opt.textContent = relayCfg.model;
       opt.selected = true;
-      aiModelRelay.innerHTML = '';
-      aiModelRelay.appendChild(opt);
+      aiRelayModel.innerHTML = '';
+      aiRelayModel.appendChild(opt);
     }
   } else {
-    aiEndpointRelay.value = 'https://api.yuegle.com/v1/chat/completions';
-    aiKeyRelay.value = '';
-    aiModelRelay.innerHTML = '<option value="">— 请先填入 Key 并获取模型列表 —</option>';
+    aiRelayUrl.value = 'https://api.yuegle.com/v1/chat/completions';
+    aiRelayKey.value = '';
+    aiRelayModel.innerHTML = '<option value="">-- 请先填入 Key 并获取模型列表 --</option>';
   }
 
   aiDialog.showModal();
@@ -4910,69 +4162,31 @@ function closeAIConfig() {
   aiDialog.close();
 }
 
-// ── Tab 点击事件 ──
-modeTabs.forEach(function(tab) {
-  tab.addEventListener('click', function() {
-    switchAIMode(tab.dataset.mode);
-  });
-});
-
-// ── 获取模型列表 ──
-btnFetchModels.addEventListener('click', async function() {
-  var endpoint = aiEndpointRelay.value.trim();
-  var key = aiKeyRelay.value.trim();
-  if (!endpoint || !key) {
-    setStatus('请先填写中转站的 API 端点和 Key', 'err');
-    return;
-  }
-  setStatus('正在获取模型列表...', 'busy');
-  try {
-    var models = await fetchRelayModels(endpoint, key);
-    if (models.length === 0) {
-      setStatus('未获取到可用模型', 'err');
-      return;
-    }
-    aiModelRelay.innerHTML = '';
-    models.forEach(function(m) {
-      var opt = document.createElement('option');
-      opt.value = m;
-      opt.textContent = m;
-      aiModelRelay.appendChild(opt);
-    });
-    // 自动选择第一个
-    aiModelRelay.selectedIndex = 0;
-    setStatus('获取到 ' + models.length + ' 个模型 ✅', 'ok');
-  } catch (e) {
-    setStatus('获取模型列表失败: ' + e.message, 'err');
-  }
-});
-
 // ── 关闭按钮 ──
-$('btn-close-ai-config').addEventListener('click', closeAIConfig);
+$('btn-close-ai').addEventListener('click', closeAIConfig);
 aiDialog.addEventListener('click', function(e) {
   if (e.target === aiDialog) closeAIConfig();
 });
 
 // ── 保存配置 ──
-$('btn-save-ai-config').addEventListener('click', function() {
-  // 获取当前激活的 tab
-  var activeTab = aiDialog.querySelector('.ai-mode-tab.active');
-  var mode = activeTab ? activeTab.dataset.mode : 'deepseek';
+$('btn-save-ai').addEventListener('click', function() {
+  var activeBtn = aiDialog.querySelector('.ai-tab-btn.active');
+  var mode = activeBtn ? activeBtn.dataset.mode : 'deepseek';
 
   var cfg;
   if (mode === 'relay') {
-    var endpoint = aiEndpointRelay.value.trim();
-    var key = aiKeyRelay.value.trim();
-    var model = aiModelRelay.value;
+    var endpoint = aiRelayUrl.value.trim();
+    var key = aiRelayKey.value.trim();
+    var model = aiRelayModel.value.trim();
     if (!endpoint || !key) {
       setStatus('请填写中转站的 API 端点和 Key', 'err');
       return;
     }
     cfg = { endpoint: endpoint, key: key, model: model || 'gpt-4o' };
   } else {
-    var endpoint = aiEndpointDS.value.trim();
-    var key = aiKeyDS.value.trim();
-    var model = aiModelDS.value.trim();
+    var endpoint = aiDsUrl.value.trim();
+    var key = aiDsKey.value.trim();
+    var model = aiDsModel.value.trim();
     if (!endpoint || !key) {
       setStatus('请填写 DeepSeek 的 API 端点和 Key', 'err');
       return;
@@ -4986,75 +4200,145 @@ $('btn-save-ai-config').addEventListener('click', function() {
   closeAIConfig();
 });
 
-// ── 测试连接 ──
+// ── 测试连接（用实时输入框的值直接 fetch，不经过 callAI） ──
 $('btn-test-ai').addEventListener('click', async function() {
-  var activeTab = aiDialog.querySelector('.ai-mode-tab.active');
-  var mode = activeTab ? activeTab.dataset.mode : 'deepseek';
+  var activeBtn = aiDialog.querySelector('.ai-tab-btn.active');
+  var mode = activeBtn ? activeBtn.dataset.mode : 'deepseek';
+  var feedback = $('ai-global-feedback');
 
-  var cfg;
+  // 从输入框读取实时值
+  var rawUrl, key, model;
   if (mode === 'relay') {
-    cfg = {
-      endpoint: aiEndpointRelay.value.trim(),
-      model: aiModelRelay.value || 'gpt-4o',
-      key: aiKeyRelay.value.trim(),
-    };
+    rawUrl = aiRelayUrl.value.trim();
+    model = aiRelayModel.value.trim() || 'gpt-4o';
+    key = aiRelayKey.value.trim();
   } else {
-    cfg = {
-      endpoint: aiEndpointDS.value.trim(),
-      model: aiModelDS.value.trim() || 'deepseek-chat',
-      key: aiKeyDS.value.trim(),
-    };
+    rawUrl = aiDsUrl.value.trim();
+    model = aiDsModel.value.trim() || 'deepseek-chat';
+    key = aiDsKey.value.trim();
   }
 
-  if (!cfg.endpoint || !cfg.key) {
-    setStatus('请先填写 API 端点和 Key', 'err');
+  if (!rawUrl || !key) {
+    var msg = '请先填写 API 端点和 Key';
+    setStatus(msg, 'err');
+    if (feedback) { feedback.textContent = '⚠️ ' + msg; feedback.style.display = 'block'; feedback.style.background = 'rgba(248,113,113,0.15)'; feedback.style.color = '#f87171'; }
     return;
   }
 
+  // 智能拼接路径：防止用户只填了 base URL 没加 /chat/completions
+  var endpoint = ensureChatEndpoint(rawUrl);
+
   setStatus('正在测试 AI 连接...', 'busy');
+  if (feedback) { feedback.textContent = '⏳ 正在测试 AI 连接...'; feedback.style.display = 'block'; feedback.style.background = 'rgba(251,191,36,0.15)'; feedback.style.color = '#fbbf24'; }
+
+  // 直接用实时输入值发起 fetch，不经过 callAI（callAI 只读 localStorage）
+  var testBody = {
+    model: model,
+    messages: [
+      { role: 'user', content: 'ping' },
+    ],
+    max_tokens: 5,
+  };
+
+  var res;
   try {
-    var result = await callAI('你是一个连接测试助手。请仅回复"连接成功"四个字。', '测试连接', false);
-    if (result.indexOf('连接成功') !== -1) {
-      setStatus('AI 连接测试通过 ✅', 'ok');
-    } else {
-      setStatus('AI 响应异常: ' + result.slice(0, 60), 'err');
-    }
+    res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + key,
+      },
+      body: JSON.stringify(testBody),
+    });
   } catch (e) {
-    setStatus('AI 连接失败: ' + e.message, 'err');
+    var msg = classifyFetchError(e);
+    setStatus('AI 连接失败', 'err');
+    if (feedback) { feedback.textContent = '❌ ' + msg; feedback.style.display = 'block'; feedback.style.background = 'rgba(248,113,113,0.15)'; feedback.style.color = '#f87171'; }
+    return;
+  }
+
+  if (!res.ok) {
+    var errText = await res.text().catch(function() { return ''; });
+    var detail = errText.slice(0, 200) || res.statusText;
+    var msg;
+    if (res.status === 401 || res.status === 403) {
+      msg = '🔑 API 认证失败 (' + res.status + ')：请检查 API Key 是否正确。' + (detail ? ' 服务器返回: ' + detail : '');
+    } else if (res.status === 404) {
+      msg = '🤖 AI 接口返回 404：该 API 端点不支持聊天补全请求。\n可能原因：① 端点地址有误（检查是否以 /chat/completions 结尾）；② 该中转站使用非标准路径；③ 模型不支持。\n服务器返回: ' + detail;
+    } else if (res.status === 429) {
+      msg = '⏳ API 请求过于频繁 (' + res.status + ')：触发了速率限制，请稍后重试。';
+    } else if (res.status >= 500) {
+      msg = '🔴 AI 服务器错误 (' + res.status + ')：服务端异常，请稍后重试或联系服务商。' + (detail ? ' 详情: ' + detail : '');
+    } else {
+      msg = '🤖 AI 请求失败 (' + res.status + ')：' + detail;
+    }
+    setStatus('AI 连接失败', 'err');
+    if (feedback) { feedback.textContent = '❌ ' + msg; feedback.style.display = 'block'; feedback.style.background = 'rgba(248,113,113,0.15)'; feedback.style.color = '#f87171'; }
+    return;
+  }
+
+  // 解析响应 — 能走到这里说明 HTTP 200，连接成功
+  var data;
+  try {
+    data = await res.json();
+  } catch (e) {
+    var msg = '📄 AI 返回数据解析失败：服务器返回了非 JSON 格式的数据。';
+    setStatus('AI 连接失败', 'err');
+    if (feedback) { feedback.textContent = '❌ ' + msg; feedback.style.display = 'block'; feedback.style.background = 'rgba(248,113,113,0.15)'; feedback.style.color = '#f87171'; }
+    return;
+  }
+
+  var reply = data.choices && data.choices[0] && data.choices[0].message
+    ? data.choices[0].message.content
+    : '无回复';
+
+  // HTTP 200 = 连接成功，显示 AI 回复内容（绿色）
+  var successMsg = '✅ 测试成功！AI 响应: ' + reply.slice(0, 100);
+  setStatus(successMsg, 'ok');
+  if (feedback) { feedback.textContent = successMsg; feedback.style.display = 'block'; feedback.style.background = 'rgba(16,185,129,0.1)'; feedback.style.color = '#10b981'; }
+});
+
+// ── 获取模型列表 ──
+$('btn-fetch-models').addEventListener('click', async function() {
+  var endpoint = aiRelayUrl.value.trim();
+  var key = aiRelayKey.value.trim();
+  var feedback = $('ai-global-feedback');
+  if (!endpoint || !key) {
+    var msg = '请先填写中转站的 API 端点和 Key';
+    setStatus(msg, 'err');
+    if (feedback) { feedback.textContent = '⚠️ ' + msg; feedback.style.display = 'block'; feedback.style.background = 'rgba(248,113,113,0.15)'; feedback.style.color = '#f87171'; }
+    return;
+  }
+  setStatus('正在获取模型列表...', 'busy');
+  if (feedback) { feedback.textContent = '⏳ 正在获取模型列表...'; feedback.style.display = 'block'; feedback.style.background = 'rgba(251,191,36,0.15)'; feedback.style.color = '#fbbf24'; }
+  try {
+    var models = await fetchRelayModels(endpoint, key);
+    if (models.length === 0) {
+      var msg = '未获取到可用模型';
+      setStatus(msg, 'err');
+      if (feedback) { feedback.textContent = '⚠️ ' + msg; feedback.style.display = 'block'; feedback.style.background = 'rgba(248,113,113,0.15)'; feedback.style.color = '#f87171'; }
+      return;
+    }
+    aiRelayModel.innerHTML = '';
+    models.forEach(function(m) {
+      var opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = m;
+      aiRelayModel.appendChild(opt);
+    });
+    aiRelayModel.selectedIndex = 0;
+    setStatus('获取到 ' + models.length + ' 个模型 ✅', 'ok');
+    if (feedback) { feedback.textContent = '✅ 获取到 ' + models.length + ' 个模型'; feedback.style.display = 'block'; feedback.style.background = 'rgba(74,222,128,0.15)'; feedback.style.color = '#4ade80'; }
+  } catch (e) {
+    console.error('fetchRelayModels error:', e);
+    var msg = '获取模型列表失败: ' + e.message;
+    setStatus(msg, 'err');
+    if (feedback) { feedback.textContent = '❌ ' + msg; feedback.style.display = 'block'; feedback.style.background = 'rgba(248,113,113,0.15)'; feedback.style.color = '#f87171'; }
   }
 });
 
-// ── 初始加载：填充当前激活模式的配置到 DOM ──
-(function initAIConfigUI() {
-  var mode = getActiveMode();
-  var cfg = loadModeConfig(mode);
-  if (cfg) {
-    if (mode === 'relay') {
-      aiEndpointRelay.value = cfg.endpoint || 'https://api.yuegle.com/v1/chat/completions';
-      aiKeyRelay.value = cfg.key || '';
-      if (cfg.model) {
-        var opt = document.createElement('option');
-        opt.value = cfg.model;
-        opt.textContent = cfg.model;
-        opt.selected = true;
-        aiModelRelay.innerHTML = '';
-        aiModelRelay.appendChild(opt);
-      }
-    } else {
-      aiEndpointDS.value = cfg.endpoint || '';
-      aiModelDS.value = cfg.model || '';
-      aiKeyDS.value = cfg.key || '';
-    }
-  } else {
-    // 默认 DeepSeek 预设
-    aiEndpointDS.value = 'https://api.deepseek.com/v1/chat/completions';
-    aiModelDS.value = 'deepseek-chat';
-    aiKeyDS.value = '';
-  }
-})();
-
+// ── 入口 ──
 $('btn-ai-config').addEventListener('click', openAIConfig);
-
 
 // ═══════════════════════════════════════
 
@@ -5564,166 +4848,7 @@ $('nav-power-builder').addEventListener('click', function() {
 });
 
 // ═══════════════════════════════════════
-//  17. AI 铸造专属主题宣发页 (Generative UI Engine)
-// ═══════════════════════════════════════
-
-// 从剧本 UIF 动态生成单文件 HTML 宣发页
-// AI 根据剧本世界观"手搓"一套匹配主题的 CSS + 交互逻辑
-// 每个剧本得到独一无二的视觉风格——废土=荧光绿故障风，修仙=水墨渐变，赛博=霓虹发光
-const PROMPT_LANDING_PAGE = '你是一个拥有顶级审美的前端UI/UX设计师和交互开发专家。\n' +
-  '你的任务是：根据用户提供的剧本世界观，编写一个【完全独立、单文件、可以直接在浏览器双击运行】的 HTML 游戏宣发与角色创建页。\n\n' +
-  '【视觉与 CSS 要求】（绝对核心）：\n' +
-  '1. 严禁使用任何普通的白底黑字。必须根据剧本的题材（如赛博、修仙、废土、日系等）原创一套极具沉浸感的 CSS 样式！\n' +
-  '2. 灵活运用深色模式、背景渐变、霓虹发光、特殊字体排版、边框纹理来展现生态关系。\n' +
-  '3. 必须包含响应式设计，界面要高级、精美、多层次。\n\n' +
-  '【功能与交互要求】（强制实现，必须全部手写原生 JS，不可依赖任何外部库）：\n' +
-  '1. 页面上半部分：展示剧本标题、标签、高燃的背景简介。\n' +
-  '2. 页面下半部分：必须提供一个"玩家自定义档案"的表单。包含：姓名、性别、年龄、表面身份/职业、外貌特征、额外隐藏背景(Textarea)。\n' +
-  '3. 必须提供 3-5 个契合世界观的【预设词卡片/标签】，点击后自动填入对应输入框（用 onclick 直接绑定，不要用 addEventListener）。\n' +
-  '4. 页面最底部：必须有一个引人注目的【复制档案并启程】按钮，用 onclick 直接绑定。\n' +
-  '5. 复制功能实现（必须严格按以下方式）：\n' +
-  '   - 点击复制按钮后，读取所有表单字段的值\n' +
-  '   - 拼接成一段完整的角色档案文本，格式如："姓名：xxx\\n性别：xxx\\n年龄：xxx\\n身份：xxx\\n外貌：xxx\\n隐藏背景：xxx\\n\\n=> 档案确认完毕。请根据上述我的设定，开始游戏剧情第一幕。"\n' +
-  '   - 使用 navigator.clipboard.writeText() 写入剪贴板\n' +
-  '   - 按钮文字变为"✅ 复制成功！"，1.5 秒后恢复原样\n' +
-  '   - 如果某个字段为空，自动填入"待定"或随机生成一个符合世界观的默认值，不允许留空\n\n' +
-  '【输出限制】：\n' +
-  '直接输出完整的 <!DOCTYPE html> 代码，绝对不要包裹在 ```html ``` 标记中，不要输出任何解释性废话。';
-
-/**
- * 弹出主角身份确认 dialog
- * @param {string} hint - 从剧本中提取的主角线索，预填到输入框
- * @returns {Promise<string|null>} - 用户输入的主角身份，null 表示取消
- */
-function askProtagonist(hint) {
-  return new Promise(function(resolve) {
-    var dialog = document.getElementById('protagonist-dialog');
-    var input = document.getElementById('protagonist-input');
-    var confirmBtn = document.getElementById('btn-confirm-protagonist');
-    var skipBtn = document.getElementById('btn-skip-protagonist');
-    var closeBtn = document.getElementById('btn-close-protagonist');
-
-    if (!dialog || !input) {
-      // fallback: 直接返回 hint
-      resolve(hint);
-      return;
-    }
-
-    // 预填建议值
-    input.value = hint;
-
-    function cleanup() {
-      dialog.close();
-      confirmBtn.removeEventListener('click', onConfirm);
-      skipBtn.removeEventListener('click', onSkip);
-      closeBtn.removeEventListener('click', onCancel);
-      dialog.removeEventListener('cancel', onCancel);
-    }
-
-    function onConfirm() {
-      var val = input.value.trim();
-      cleanup();
-      resolve(val || hint);
-    }
-
-    function onSkip() {
-      cleanup();
-      resolve(hint);
-    }
-
-    function onCancel() {
-      cleanup();
-      resolve(null);
-    }
-
-    confirmBtn.addEventListener('click', onConfirm);
-    skipBtn.addEventListener('click', onSkip);
-    closeBtn.addEventListener('click', onCancel);
-    dialog.addEventListener('cancel', onCancel);
-
-    dialog.showModal();
-  });
-}
-
-async function generateLandingPage(scriptId) {
-  if (!scriptId) {
-    setStatus('❌ 未指定剧本', 'err');
-    return;
-  }
-
-  // 检查 AI 是否已配置
-  var aiCfg = loadAIConfig();
-  if (!aiCfg || !aiCfg.endpoint || !aiCfg.key) {
-    setStatus('⚠️ 请先在右上角 [🤖 AI 配置] 中设置 API 端点和 Key', 'err');
-    return;
-  }
-
-  // 获取剧本数据
-  var entry = await dbGet(scriptId);
-  if (!entry || !entry.uif) {
-    setStatus('❌ 剧本数据不存在', 'err');
-    return;
-  }
-
-  var uif = entry.uif;
-  var meta = uif.meta || {};
-  var prompts = uif.prompts || {};
-  var mainPrompt = prompts.mainPrompt || '';
-
-  // 直接从 meta.protagonist 读取已确认的主角（Step 2 时已定下）
-  var protagonist = meta.protagonist || '';
-
-  withLoading('btnGenHtml', '✨ AI 正在铸造专属主题宣发页', async function() {
-    var worldBook = uif.worldBook || [];
-    var title = meta.title || '未命名剧本';
-    var summary = meta.summary || '';
-    var description = meta.description || '';
-    var worldview = prompts.worldview || '';
-    var tags = (meta.tags || []).join(', ');
-
-    // 提取世界书摘要
-    var wbSummary = worldBook.map(function(wb) {
-      return wb.keywords ? wb.keywords.slice(0, 3).join('/') : (wb.title || '条目');
-    }).join(', ');
-
-    // 构建用户消息：剧本背景信息 + 主角身份
-    var userMsg = '剧本标题：' + title + '\n' +
-      '剧本标签：' + tags + '\n' +
-      (protagonist ? '玩家扮演角色：' + protagonist + '\n' : '') +
-      '背景简介：' + summary + '\n' +
-      '详细设定：' + description + '\n' +
-      '核心法则：' + worldview + '\n' +
-      '核心提示词：' + mainPrompt.slice(0, 500) + '\n' +
-      '世界书摘要：' + wbSummary;
-
-    var response = await callAI(PROMPT_LANDING_PAGE, userMsg, false);
-
-    // 防御性清理：移除可能的 Markdown 代码块包裹
-    var htmlContent = response.replace(/^```html\s*/i, '').replace(/```\s*$/i, '').trim();
-
-    // 验证是否包含 DOCTYPE（基本完整性检查）
-    if (!/<!DOCTYPE\s+html/i.test(htmlContent)) {
-      if (htmlContent.indexOf('<html') === -1) {
-        htmlContent = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' +
-          escapeHtml(title) + ' - 专属宣发页</title></head><body>' + htmlContent + '</body></html>';
-      }
-    }
-
-    // 入库：同时更新 UIF 顶层 landingPage + DB 索引字段 htmlLandingPage
-    uif.landingPage = htmlContent;
-    await dbUpdate(scriptId, { htmlLandingPage: htmlContent, uif: uif });
-
-    // 刷新详情页显示
-    if (viewingLibId === scriptId) {
-      showDetailInPanel(scriptId);
-    }
-
-    setStatus('🎉 专属宣发页已入库，可在详情页预览和下载', 'ok');
-  });
-}
-
-// ═══════════════════════════════════════
-//  18. 剧本车间 · 4 步向导交互
+//  17. 剧本车间 · 4 步向导交互
 // ═══════════════════════════════════════
 
 // ── 全局状态机 ──
@@ -5912,7 +5037,7 @@ $('btn-refine-ai').addEventListener('click', function() {
 // ── Step 2 → Step 3: Prompt 膨胀引擎 ──
 // 将短 outline 膨胀为 800+ 字的完整 System Prompt
 const PROMPT_EXPAND = '你是一位顶级的 AI 提示词工程师（Prompt Engineer），专精于将简短的剧本设定膨胀为高质量的 AI 角色 System Prompt。\n\n' +
-  '你的任务：根据用户提供的剧本设定（标题、冲突、描述、标签），生成一份 **完整的 System Prompt**。\n\n' +
+  '你的任务：根据用户提供的剧本设定（标题、冲突、描述、标签），以及可选的玩家素材和主角设定，生成一份 **完整的 System Prompt**。\n\n' +
   '## 结构要求（必须按此顺序）：\n\n' +
   '### 1. 角色定义\n' +
   '- 你是谁？用第一人称或第二人称"你"定义 AI 需要扮演的角色\n' +
@@ -5926,14 +5051,43 @@ const PROMPT_EXPAND = '你是一位顶级的 AI 提示词工程师（Prompt Engi
   '- 角色的动机与目标\n' +
   '- 角色的弱点和限制（让角色有层次感）\n\n' +
   '### 4. 行为规则\n' +
-  '- AI 在对话中必须遵守的 5-8 条具体规则\n' +
-  '- 包括：叙事风格、语言习惯、响应长度、禁忌内容\n' +
-  '- 规则要可执行、可验证\n\n' +
+  '#### 4.1 AI角色\n' +
+  '游戏叙述AI，保持中立旁观姿态，不说教、不评判，仅客观呈现剧情与规则，同步监督各面板每回合数据更新，恪守核心提示词底层设定。\n\n' +
+  '#### 4.2 禁止行为\n' +
+  '- 替玩家说话、做决定，或描述玩家未明确表达的想法、动作；\n' +
+  '- 超出玩家输入范围，擅自推进剧情、添加未约定的情节；\n' +
+  '- 角色行为脱离其年龄、身份、性格设定，出现人设崩坏；\n' +
+  '- NPC无原则讨好玩家，违背自身利益与意志；\n' +
+  '- 游戏内资源凭空产生，不遵循资源管理规则；\n' +
+  '- 出现OOC（脱离人设）相关的解释或道歉话术；\n' +
+  '- NPC表现出全知全能，知晓自身设定外的信息（如未发生的剧情、玩家未表达的想法）；\n\n' +
   '### 5. 叙事风格\n' +
   '- 描述期望的叙事语调（如：冷峻写实、浪漫诗意、黑色幽默）\n' +
   '- 举例说明风格的运用方式\n\n' +
   '### 6. 开场引导\n' +
   '- 提供一个开场白示例，展示 AI 应该如何开始对话\n\n' +
+  '### 7. 面板生成规则\n' +
+  '根据以下规则生成游戏数据面板，嵌入 System Prompt 中。各面板独立分隔，默认收缩，点击展开，每回合必须更新所有相关数据。使用HTML <details> 标签实现折叠效果。\n\n' +
+  '#### 7.1 前期分析\n' +
+  '结合整体故事内容、主题基调及核心玩法，细致拆解剧情推进中可能出现的所有需追踪数据，包括属性、体力、兵器、装备、道具、组队、好感度、攻略进度、NPC相遇状态等，不遗漏任何关键可追踪信息。同时识别是否需要**批量管理面板**（例如：多个可攻略角色→后宫名录；多个并行任务→任务面板；复杂经营系统→商会/门派面板）。\n\n' +
+  '#### 7.2 内容定义\n' +
+  '根据分析结果，精准定义各面板核心内容，仅保留玩家所需关键信息，剔除冗余内容，确保面板内容与故事主题、玩法高度适配，数据可量化、可追踪。\n\n' +
+  '#### 7.3 归类原则\n' +
+  '同类数据必须集中在唯一面板内，严禁重复、严禁跨面板分散。记忆仅在记忆面板出现，攻略与组队仅在互动角色面板（或批量管理面板）出现，装备与资源仅在玩家面板出现。\n\n' +
+  '#### 7.4 自适应规则\n' +
+  '无战斗则不生成战斗属性模块，无装备则不生成兵器装备模块，不保留空白冗余内容。无复杂系统则不生成批量管理面板。\n\n' +
+  '#### 7.5 动态拓展规则\n' +
+  '游戏进行中若出现无法归类的新追踪元素，自动在对应面板内创建简洁规范的新类目标签进行记录（使用"表情+字段"格式），不强行归类、不遗漏数据。\n\n' +
+  '#### 7.6 表情+字段强制规则\n' +
+  '面板中的每一个数据项必须以一个emoji开头（如👤、❤️、🔪、💰、📍等），后跟字段名称和数值/状态。禁止无表情的纯文字字段。同一面板内同一表情可复用，但建议不同维度使用不同表情。\n\n' +
+  '#### 7.7 美化排列\n' +
+  '面板内容按"核心信息优先、逻辑清晰、视觉整洁"原则排列，统一排版格式，使用表情符号区分模块，关键数据加粗标注，提升可读性；同类型数据集中归类。\n\n' +
+  '#### 7.8 状态栏\n' +
+  '仅展示场景、时间、1-2项极简核心状态，不与玩家面板内容重复。\n\n' +
+  '#### 7.9 互动角色面板\n' +
+  '每个在场的NPC拥有一个独立的折叠面板，面板标题使用NPC名字。不在场的NPC不生成面板。当新NPC入场时，动态创建其面板；离场时面板保留但标记"👋 离场"或暂时隐藏（由游戏设定决定，默认保留但折叠）。使用 <details> 标签实现折叠。\n\n' +
+  '#### 7.10 自动拓展组\n' +
+  '每个**人物类面板**（玩家面板、每个互动角色面板、批量管理面板中的人物子模块）的末尾必须增加一个`🔧 自动拓展组`区域，初始为空或包含预设占位。游戏过程中，当出现需要新追踪的数据（如临时状态、特殊羁绊、新增属性）时，AI可在此区域动态追加新的"表情+字段"行，无需修改面板主体结构。\n\n' +
   '## 质量要求：\n' +
   '- 总字数不少于 800 字\n' +
   '- 语言流畅、有感染力，避免机械化的列表感\n' +
@@ -6059,6 +5213,11 @@ $('btn-to-step-3').addEventListener('click', function() {
 
     var expandedPrompt = await callAI(PROMPT_EXPAND, userMsg, false);
 
+    // 空值保护：AI 返回空内容时给出明确提示
+    if (!expandedPrompt || expandedPrompt.trim().length === 0) {
+      throw new Error('AI 返回了空内容，请检查模型是否正常工作或重新生成');
+    }
+
     genState.prompts = {
       outline: userMsg,
       expanded: expandedPrompt,
@@ -6084,7 +5243,7 @@ $('btn-copy-prompt').addEventListener('click', function() {
   setStatus('📋 提示词已复制', 'ok');
 });
 
-// ── Step 3: 重新生成 ──
+// ── Step 3: 重新生成（复用素材和主角上下文） ──
 $('btn-regenerate-prompt').addEventListener('click', function() {
   if (!genState.selectedDraft) return;
 
@@ -6093,7 +5252,25 @@ $('btn-regenerate-prompt').addEventListener('click', function() {
     var userMsg = '剧本标题：' + card.title + '\n核心冲突：' + card.conflict +
       '\n详细设定：' + card.desc + '\n标签：' + (card.tags || []).join('、');
 
+    // 追加素材上下文（与 btn-to-step-3 保持一致）
+    if (genState.materials.length > 0) {
+      userMsg += '\n\n【玩家提供的素材】\n';
+      genState.materials.forEach(function(m) {
+        userMsg += '--- ' + m.label + ' ---\n' + m.content + '\n';
+      });
+    }
+
+    // 追加主角身份
+    if (genState.protagonist) {
+      userMsg += '\n【玩家扮演角色】\n' + genState.protagonist + '\n';
+    }
+
     var expandedPrompt = await callAI(PROMPT_EXPAND, userMsg, false);
+
+    // 空值保护
+    if (!expandedPrompt || expandedPrompt.trim().length === 0) {
+      throw new Error('AI 返回了空内容，请检查模型是否正常工作或重新生成');
+    }
 
     genState.prompts = {
       outline: userMsg,
@@ -6402,10 +5579,6 @@ $('btn-mount-folder').addEventListener('click', async function() {
 // Initial render
 renderLibList();
 
-console.log('🎭 剧本格式路由中枢 v2.0 · SPA 架构');
-console.log('📚 剧本库已就绪');
-console.log('✨ 剧本车间已就绪');
-console.log('🤖 AI 反应堆待配置');
 // ═══════════════════════════════════════
 //  樱花 WebGL 背景 (动态创建 Canvas)
 // ═══════════════════════════════════════
@@ -6679,7 +5852,7 @@ function initSakuraBg(){
   // --- 后处理 ---
   var postProcess = {};
   function renderPostProcess(){
-    gl.enable(gl.TEXTURE_2D);gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.DEPTH_TEST);
     var bindRT=function(rt,isclear){gl.bindFramebuffer(gl.FRAMEBUFFER,rt.frameBuffer);gl.viewport(0,0,rt.width,rt.height);if(isclear){gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);}};
     bindRT(renderSpec.wHalfRT0,true);
     useEffect(effectLib.mkBrightBuf,renderSpec.mainRT);
@@ -6754,19 +5927,209 @@ function initSakuraBg(){
   timeInfo.start = new Date();
   timeInfo.prev = timeInfo.start;
 
+  var sakuraReqId = null;
   function animate(){
-    var curdate = new Date();
-    timeInfo.elapsed = (curdate - timeInfo.start) / 1000.0;
-    timeInfo.delta = (curdate - timeInfo.prev) / 1000.0;
-    timeInfo.prev = curdate;
-    requestAnimationFrame(animate);
-    renderScene();
+    try {
+      var curdate = new Date();
+      timeInfo.elapsed = (curdate - timeInfo.start) / 1000.0;
+      timeInfo.delta = (curdate - timeInfo.prev) / 1000.0;
+      timeInfo.prev = curdate;
+      renderScene();
+      sakuraReqId = requestAnimationFrame(animate);
+    } catch(e) {
+      console.warn('Sakura WebGL 渲染降级:', e);
+      if (sakuraReqId) cancelAnimationFrame(sakuraReqId);
+      // 降级：清空 canvas，退化为纯色背景
+      try {
+        var ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#0a0a1a';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+      } catch(_) {}
+    }
   }
-  animate();
+  sakuraReqId = requestAnimationFrame(animate);
 }
 
 // 启动樱花背景
 initSakuraBg();
+// ═══════════════════════════════════════
+//  18. 灵感对话 · 多轮聊天室（工业级）
+//  特性：无感存档(localStorage) + 滑动窗口(20条) + TXT导出
+// ═══════════════════════════════════════
+
+(() => {
+var chatMemory = []; // 完整对话历史 [{role, content}, ...]
+var MAX_CONTEXT_MSGS = 20; // 滑动窗口：只发最近 20 条给 AI（约 10 回合）
+
+document.addEventListener('DOMContentLoaded', function() {
+  var btnSend = document.getElementById('btn-send-chat');
+  var btnClear = document.getElementById('btn-clear-chat');
+  var btnExport = document.getElementById('btn-export-chat');
+  var chatInput = document.getElementById('chat-input');
+  var historyBox = document.getElementById('chat-history-box');
+
+  if (!btnSend || !historyBox) return;
+
+  // ── 1. 初始化：从无感缓存恢复记忆 ──
+  function initChat() {
+    var saved = localStorage.getItem('aiChatMemory');
+    if (saved) {
+      try {
+        chatMemory = JSON.parse(saved);
+        // 清空默认欢迎语，渲染历史记录
+        historyBox.innerHTML = '';
+        chatMemory.forEach(function(msg) {
+          appendMessage(msg.role, msg.content);
+        });
+      } catch(e) {
+        console.error('解析聊天记录失败', e);
+      }
+    }
+  }
+
+  // ── 2. 无感存档 ──
+  function saveChat() {
+    try {
+      localStorage.setItem('aiChatMemory', JSON.stringify(chatMemory));
+    } catch(e) {
+      console.warn('聊天记录存档失败（可能 localStorage 已满）', e);
+    }
+  }
+
+  // ── 3. 渲染单条消息 ──
+  function appendMessage(role, content) {
+    var isUser = role === 'user';
+    var msgDiv = document.createElement('div');
+
+    msgDiv.style.alignSelf = isUser ? 'flex-end' : 'flex-start';
+    msgDiv.style.background = isUser ? 'var(--accent-primary)' : 'var(--bg-panel)';
+    msgDiv.style.color = isUser ? '#fff' : 'var(--text-main)';
+    msgDiv.style.padding = '12px 16px';
+    msgDiv.style.borderRadius = isUser ? '8px 8px 0 8px' : '8px 8px 8px 0';
+    msgDiv.style.border = isUser ? 'none' : '1px solid var(--border-color)';
+    msgDiv.style.maxWidth = '80%';
+    msgDiv.style.lineHeight = '1.6';
+    msgDiv.style.whiteSpace = 'pre-wrap';
+    msgDiv.style.wordBreak = 'break-word';
+    msgDiv.textContent = content;
+
+    historyBox.appendChild(msgDiv);
+    historyBox.scrollTop = historyBox.scrollHeight;
+  }
+
+  // ── 4. 核心发送逻辑（含滑动窗口） ──
+  async function handleSend() {
+    var text = chatInput.value.trim();
+    if (!text) return;
+
+    // 检查 AI 是否已配置（兼容新旧 key 存储方式）
+    var cfg = loadAIConfig();
+    if (!cfg || !cfg.endpoint || !cfg.key) {
+      alert('⚠️ 请先在右上角 [🤖 AI 配置] 中设置 API 端点和 Key');
+      return;
+    }
+
+    // 上屏用户消息
+    appendMessage('user', text);
+    chatMemory.push({ role: 'user', content: text });
+    saveChat(); // 无感存档
+    chatInput.value = '';
+
+    // 显示 loading
+    var loadingId = 'chat-loading-' + Date.now();
+    var loadingDiv = document.createElement('div');
+    loadingDiv.id = loadingId;
+    loadingDiv.style.alignSelf = 'flex-start';
+    loadingDiv.style.color = 'var(--text-muted)';
+    loadingDiv.style.padding = '12px 16px';
+    loadingDiv.style.fontSize = '13px';
+    loadingDiv.textContent = '⏳ AI 思考中...';
+    historyBox.appendChild(loadingDiv);
+    historyBox.scrollTop = historyBox.scrollHeight;
+
+    try {
+      var systemPrompt = '你是一个专业、幽默、富有创造力的网文/剧本写作灵感助理。请用简洁的语言回答用户的提问，提供世界观推演、起名、科普等帮助。';
+
+      // 【核心】滑动窗口截取：无论 UI 有多少条，只发最近 MAX_CONTEXT_MSGS 条给 AI
+      var contextToSend = chatMemory.slice(-MAX_CONTEXT_MSGS);
+
+      var responseText = await callAI(systemPrompt, contextToSend, false);
+
+      // 移除 loading，上屏 AI 回复
+      var loadingEl = document.getElementById(loadingId);
+      if (loadingEl) loadingEl.remove();
+      appendMessage('assistant', responseText);
+
+      // 记录 AI 回复并存档
+      chatMemory.push({ role: 'assistant', content: responseText });
+      saveChat();
+
+    } catch (err) {
+      var loadingEl = document.getElementById(loadingId);
+      if (loadingEl) {
+        loadingEl.textContent = '❌ ' + err.message;
+        loadingEl.style.color = '#ef4444';
+      }
+      // 失败则弹出刚才的提问，防止污染记录
+      chatMemory.pop();
+      saveChat();
+    }
+  }
+
+  // ── 5. 清空记忆 ──
+  btnClear.addEventListener('click', function() {
+    if (!confirm('确定要清空当前的对话记忆吗？')) return;
+    chatMemory = [];
+    saveChat();
+    historyBox.innerHTML =
+      '<div style="align-self: flex-start; background: var(--bg-panel); padding: 16px 20px; border-radius: 8px 8px 8px 0; border: 1px solid var(--border-color); max-width: 80%; color: var(--text-main); line-height: 1.6;">' +
+        '🧹 记忆已清空。让我们开启新的脑洞吧！' +
+      '</div>';
+  });
+
+  // ── 6. 导出 TXT ──
+  if (btnExport) {
+    btnExport.addEventListener('click', function() {
+      if (chatMemory.length === 0) {
+        alert('当前没有可导出的聊天记录！');
+        return;
+      }
+
+      var txtContent = '【灵感对话记录】\n';
+      txtContent += '====================\n\n';
+
+      chatMemory.forEach(function(msg) {
+        var roleName = msg.role === 'user' ? '【我】' : '【AI 副驾】';
+        txtContent += roleName + '\n' + msg.content + '\n\n--------------------\n\n';
+      });
+
+      var blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = '灵感记录_' + new Date().toISOString().slice(0, 10) + '.txt';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  // ── 7. 绑定发送事件 ──
+  btnSend.addEventListener('click', handleSend);
+
+  chatInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  });
+
+  // ── 启动初始化：从缓存恢复 ──
+  initChat();
+});
+})();
+
 </script>
 
 </body>

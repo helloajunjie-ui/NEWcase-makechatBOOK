@@ -59,15 +59,14 @@ async function dbFindByUid(uid) {
 }
 
 async function dbAdd(uif) {
-  const db = await openDB();
-  const tx = db.transaction(STORE_NAME, 'readwrite');
-  const store = tx.objectStore(STORE_NAME);
-  // 兼容两种调用方式：
-  // 1. dbAdd(uifObject) — 解析器导入时，uif.landingPage 存 HTML
-  // 2. dbAdd(dbEntry) — 向导保存时，dbEntry.uif 是 script 对象，dbEntry.htmlLandingPage 已设
+  // ── 1. 在打开事务之前，完成所有数据组装 + 异步查询 ──
   var landingPage = uif.htmlLandingPage || (uif.uif && uif.uif.landingPage) || uif.landingPage || '';
-  var uifData = uif.uif || uif;  // 如果传的是 dbEntry，取内部的 uif
+  var uifData = uif.uif || uif;
   var uid = uif.uid || uifData.uid || generateUid(uifData);
+
+  // 先查 uid 是否已存在（await 在这里是安全的，因为还没打开事务）
+  var existing = await dbFindByUid(uid);
+
   const entry = {
     uid: uid,
     title: uifData.meta ? (uifData.meta.title || '未命名剧本') : (uif.title || '未命名剧本'),
@@ -80,27 +79,24 @@ async function dbAdd(uif) {
     coverUrl: uifData.meta ? (uifData.meta.coverUrl || '') : '',
     bgUrl: uifData.meta ? (uifData.meta.bgUrl || '') : '',
     htmlLandingPage: landingPage,
-    createdAt: Date.now(),
+    createdAt: existing ? existing.createdAt : Date.now(),
     updatedAt: Date.now(),
     uif: uifData,
   };
 
-  // 先查 uid 是否已存在 → 存在则更新，不存在则新增
-  var existing = await dbFindByUid(uid);
   if (existing) {
-    // 保留原有 id，更新其他字段
-    entry.id = existing.id;
-    entry.createdAt = existing.createdAt;
-    return new Promise((resolve, reject) => {
-      const req = store.put(entry);
-      req.onsuccess = () => { tx.commit(); resolve(entry.id); };
-      req.onerror = e => reject(e.target.error);
-    });
+    entry.id = existing.id; // 保留主键，执行更新
   }
 
+  // ── 2. 打开事务（此时所有 await 已完成，事务不会被中断） ──
+  const db = await openDB();
+  const tx = db.transaction(STORE_NAME, 'readwrite');
+  const store = tx.objectStore(STORE_NAME);
+
+  // ── 3. 立即执行 DB 操作 ──
   return new Promise((resolve, reject) => {
-    const req = store.add(entry);
-    req.onsuccess = () => { tx.commit(); resolve(req.result); };
+    const req = existing ? store.put(entry) : store.add(entry);
+    req.onsuccess = () => { tx.commit(); resolve(existing ? entry.id : req.result); };
     req.onerror = e => reject(e.target.error);
   });
 }

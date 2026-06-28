@@ -14,6 +14,7 @@ const htmlFiles = [
   'html/nav.html',
   'html/views/view-converter.html',
   'html/views/view-generator.html',
+  'html/views/view-chat.html',
   'html/views/view-library.html',
   'html/views/view-char-creator.html',
   'html/views/view-world-builder.html',
@@ -36,6 +37,7 @@ const jsFiles = [
   'js/ui.js',
   'js/api.js',
   'js/features/main-features.js',
+  'js/features/chat.js',
 ];
 
 // ── 拼接函数 ──

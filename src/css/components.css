@@ -166,6 +166,7 @@
 .btn-sm{
   padding:6px 14px;
   font-size:12px;
+  white-space:nowrap;
 }
 .btn-full{
   width:100%;
@@ -600,6 +601,9 @@
 #view-power-builder.active{
   display:flex !important;
   overflow-y:auto;
+}
+#view-chat.active{
+  display:flex !important;
 }
 #view-generator.active{
   display:flex !important;
@@ -1272,13 +1276,17 @@
   animation:fadeIn 0.25s ease;
 }
 
-/* AI 双模式 Tab */
-.ai-mode-tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--bg-secondary);border-radius:8px;padding:3px;}
-.ai-mode-tab{flex:1;padding:8px 12px;border:none;border-radius:6px;background:transparent;color:var(--text-secondary);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;}
-.ai-mode-tab:hover{color:var(--text-primary);background:var(--bg-tertiary);}
-.ai-mode-tab.active{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(100,108,255,.3);}
-.ai-mode-panel{display:none;}
-.ai-mode-panel.active{display:block;animation:fadeIn .2s ease;}
+/* AI 配置 Tab 切换 — 互斥模式 */
+.ai-tab-header{display:flex;gap:4px;margin-bottom:16px;background:var(--bg-secondary);border-radius:8px;padding:3px;}
+.ai-tab-btn{flex:1;padding:8px 12px;border:none;border-radius:6px;background:transparent;color:var(--text-secondary);font-size:13px;font-weight:500;cursor:pointer;transition:all .2s;}
+.ai-tab-btn:hover{color:var(--text-primary);background:var(--bg-tertiary);}
+.ai-tab-btn.active{background:var(--accent);color:#fff;box-shadow:0 2px 8px rgba(100,108,255,.3);}
+.ai-tab-panel{display:none !important;}
+.ai-tab-panel.active{display:block;animation:fadeIn .2s ease;}
 .ai-model-select-row{display:flex;gap:8px;align-items:center;}
 .ai-model-select{flex:1;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-family:inherit;cursor:pointer;}
 .ai-model-select option{background:var(--bg-primary);color:var(--text-primary);}
+
+/* --- AI 配置面板强制 Tab 样式（兜底） --- */
+.ai-tab-panel{display:none !important;}
+.ai-tab-panel.active{display:block !important;animation:fadeIn .2s ease;}

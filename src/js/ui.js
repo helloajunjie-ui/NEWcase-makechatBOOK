@@ -98,6 +98,7 @@ function switchView(viewName) {
 $('nav-converter').addEventListener('click', () => switchView('converter'));
 $('nav-library').addEventListener('click', () => switchView('library'));
 $('nav-generator').addEventListener('click', () => switchView('generator'));
+$('nav-chat').addEventListener('click', () => switchView('chat'));
 
 // ═══════════════════════════════════════
 //  11. 剧本库 · 渲染列表 & 详情
@@ -460,13 +461,6 @@ function renderBatchList() {
   }).join('');
 }
 
-function getBatchFileName(idx, fmt) {
-  const entry = batchFiles[idx];
-  if (!entry) return 'batch_' + idx + '.' + fmt;
-  const base = entry.name.replace(/\.json$/i, '');
-  return base + '.' + fmt;
-}
-
 // ═══════════════════════════════════════
 //  13. CRC-32 (ZIP)
 // ═══════════════════════════════════════
@@ -486,6 +480,145 @@ function crc32(data) {
   }
   return (crc ^ 0xFFFFFFFF) >>> 0;
 }
+
+// ═══════════════════════════════════════
+//  13b. AI 铸造专属主题宣发页
+// ═══════════════════════════════════════
+
+// 从剧本 UIF 动态生成单文件 HTML 宣发页
+// AI 根据剧本世界观"手搓"一套匹配主题的 CSS + 交互逻辑
+// 每个剧本得到独一无二的视觉风格——废土=荧光绿故障风，修仙=水墨渐变，赛博=霓虹发光
+const PROMPT_LANDING_PAGE = '你是一个拥有顶级审美的前端UI/UX设计师和交互开发专家。\n' +
+  '你的任务是：根据用户提供的剧本世界观，编写一个【完全独立、单文件、可以直接在浏览器双击运行】的 HTML 游戏宣发与角色创建页。\n\n' +
+  '【视觉与 CSS 要求】（绝对核心）：\n' +
+  '1. 严禁使用任何普通的白底黑字。必须根据剧本的题材（如赛博、修仙、废土、日系等）原创一套极具沉浸感的 CSS 样式！\n' +
+  '2. 灵活运用深色模式、背景渐变、霓虹发光、特殊字体排版、边框纹理来展现生态关系。\n' +
+  '3. 必须包含响应式设计，界面要高级、精美、多层次。\n\n' +
+  '【功能与交互要求】（强制实现，必须全部手写原生 JS，不可依赖任何外部库）：\n' +
+  '1. 页面上半部分：展示剧本标题、标签、高燃的背景简介。\n' +
+  '2. 页面下半部分：必须提供一个"玩家自定义档案"的表单。包含：姓名、性别、年龄、表面身份/职业、外貌特征、额外隐藏背景(Textarea)。\n' +
+  '3. 必须提供 3-5 个契合世界观的【预设词卡片/标签】，点击后自动填入对应输入框（用 onclick 直接绑定，不要用 addEventListener）。\n' +
+  '4. 页面最底部：必须有一个引人注目的【复制档案并启程】按钮，用 onclick 直接绑定。\n' +
+  '5. 复制功能实现（必须严格按以下方式）：\n' +
+  '   - 点击复制按钮后，读取所有表单字段的值\n' +
+  '   - 拼接成一段完整的角色档案文本，格式如："姓名：xxx\\n性别：xxx\\n年龄：xxx\\n身份：xxx\\n外貌：xxx\\n隐藏背景：xxx\\n\\n=> 档案确认完毕。请根据上述我的设定，开始游戏剧情第一幕。"\n' +
+  '   - 使用 navigator.clipboard.writeText() 写入剪贴板\n' +
+  '   - 按钮文字变为"✅ 复制成功！"，1.5 秒后恢复原样\n' +
+  '   - 如果某个字段为空，自动填入"待定"或随机生成一个符合世界观的默认值，不允许留空\n\n' +
+  '【输出限制】：\n' +
+  '直接输出完整的 <!DOCTYPE html> 代码，绝对不要包裹在 ```html ``` 标记中，不要输出任何解释性废话。';
+
+async function generateLandingPage(scriptId) {
+  if (!scriptId) {
+    setStatus('❌ 未指定剧本', 'err');
+    return;
+  }
+
+  // 检查 AI 是否已配置
+  var aiCfg = loadAIConfig();
+  if (!aiCfg || !aiCfg.endpoint || !aiCfg.key) {
+    setStatus('⚠️ 请先在右上角 [🤖 AI 配置] 中设置 API 端点和 Key', 'err');
+    return;
+  }
+
+  // 获取剧本数据
+  var entry = await dbGet(scriptId);
+  if (!entry || !entry.uif) {
+    setStatus('❌ 剧本数据不存在', 'err');
+    return;
+  }
+
+  var uif = entry.uif;
+  var meta = uif.meta || {};
+  var prompts = uif.prompts || {};
+  var mainPrompt = prompts.mainPrompt || '';
+
+  // 直接从 meta.protagonist 读取已确认的主角（Step 2 时已定下）
+  var protagonist = meta.protagonist || '';
+
+  withLoading('btnGenHtml', '✨ AI 正在铸造专属主题宣发页', async function() {
+    var worldBook = uif.worldBook || [];
+    var title = meta.title || '未命名剧本';
+    var summary = meta.summary || '';
+    var description = meta.description || '';
+    var worldview = prompts.worldview || '';
+    var tags = (meta.tags || []).join(', ');
+
+    // 提取世界书摘要
+    var wbSummary = worldBook.map(function(wb) {
+      return wb.keywords ? wb.keywords.slice(0, 3).join('/') : (wb.title || '条目');
+    }).join(', ');
+
+    // 构建用户消息：剧本背景信息 + 主角身份
+    var userMsg = '剧本标题：' + title + '\n' +
+      '剧本标签：' + tags + '\n' +
+      (protagonist ? '玩家扮演角色：' + protagonist + '\n' : '') +
+      '背景简介：' + summary + '\n' +
+      '详细设定：' + description + '\n' +
+      '核心法则：' + worldview + '\n' +
+      '核心提示词：' + mainPrompt.slice(0, 500) + '\n' +
+      '世界书摘要：' + wbSummary;
+
+    var response = await callAI(PROMPT_LANDING_PAGE, userMsg, false);
+
+    // 防御性清理：移除可能的 Markdown 代码块包裹
+    var htmlContent = response.replace(/^```html\s*/i, '').replace(/```\s*$/i, '').trim();
+
+    // 验证是否包含 DOCTYPE（基本完整性检查）
+    if (!/<!DOCTYPE\s+html/i.test(htmlContent)) {
+      if (htmlContent.indexOf('<html') === -1) {
+        htmlContent = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' +
+          escapeHtml(title) + ' - 专属宣发页</title></head><body>' + htmlContent + '</body></html>';
+      }
+    }
+
+    // 入库：同时更新 UIF 顶层 landingPage + DB 索引字段 htmlLandingPage
+    uif.landingPage = htmlContent;
+    await dbUpdate(scriptId, { htmlLandingPage: htmlContent, uif: uif });
+
+    // 刷新详情页显示
+    if (viewingLibId === scriptId) {
+      showDetailInPanel(scriptId);
+    }
+
+    setStatus('🎉 专属宣发页已入库，可在详情页预览和下载', 'ok');
+  });
+}
+
+// ═══════════════════════════════════════
+//  13c. AI 配置 Tab 切换（内联样式硬编码版）
+// ═══════════════════════════════════════
+
+// 互斥 Tab 切换：直接操作内联 style.display，无视任何 CSS 权重
+function switchAITab(mode) {
+  // 1. 切换 Tab 按钮样式
+  document.querySelectorAll('.ai-tab-btn').forEach(function(b) {
+    b.classList.remove('active');
+    b.style.background = 'transparent';
+    b.style.color = 'var(--text-muted)';
+    b.style.borderColor = 'var(--border-color)';
+  });
+  var activeBtn = document.querySelector('.ai-tab-btn[data-mode="' + mode + '"]');
+  if (activeBtn) {
+    activeBtn.classList.add('active');
+    activeBtn.style.background = 'var(--bg-hover)';
+    activeBtn.style.color = 'var(--text-main)';
+    activeBtn.style.borderColor = 'var(--accent-primary)';
+  }
+
+  // 2. 强制内联切换面板（直接通过 ID 操作，杜绝任何 DOM 结构误解）
+  document.getElementById('ai-panel-deepseek').style.display = 'none';
+  document.getElementById('ai-panel-relay').style.display = 'none';
+  document.getElementById('ai-panel-' + mode).style.display = 'block';
+}
+
+// Tab 点击事件（委托到 document，避免 DOM 未就绪问题）
+document.addEventListener('click', function(e) {
+  var btn = e.target.closest('.ai-tab-btn');
+  if (btn && btn.closest('#ai-config-dialog')) {
+    switchAITab(btn.dataset.mode);
+  }
+});
 
 // ═══════════════════════════════════════
 //  14. 事件绑定
@@ -904,3 +1037,78 @@ if (libList) {
 }
 
 // ═══════════════════════════════════════
+//  最高指令（Global System Directive）
+// ═══════════════════════════════════════
+
+const STORAGE_KEY_SUPREME = 'aiSupremeDirective';
+
+function openSupremeDirective() {
+  const dialog = document.getElementById('supreme-directive-dialog');
+  const input = document.getElementById('supreme-directive-input');
+  const feedback = document.getElementById('supreme-directive-feedback');
+  if (!dialog || !input) return;
+
+  // 加载已保存的指令
+  input.value = localStorage.getItem(STORAGE_KEY_SUPREME) || '';
+  feedback.textContent = '';
+  feedback.style.color = 'var(--text-muted)';
+
+  dialog.showModal();
+}
+
+function saveSupremeDirective() {
+  const input = document.getElementById('supreme-directive-input');
+  const feedback = document.getElementById('supreme-directive-feedback');
+  if (!input || !feedback) return;
+
+  const val = input.value.trim();
+  if (val) {
+    localStorage.setItem(STORAGE_KEY_SUPREME, val);
+    feedback.textContent = '✅ 最高指令已保存，将注入到所有 AI 请求中。';
+    feedback.style.color = '#22c55e';
+  } else {
+    localStorage.removeItem(STORAGE_KEY_SUPREME);
+    feedback.textContent = 'ℹ️ 已清空最高指令，AI 请求将不再注入额外指令。';
+    feedback.style.color = 'var(--text-muted)';
+  }
+}
+
+function clearSupremeDirective() {
+  const input = document.getElementById('supreme-directive-input');
+  const feedback = document.getElementById('supreme-directive-feedback');
+  if (!input || !feedback) return;
+
+  input.value = '';
+  localStorage.removeItem(STORAGE_KEY_SUPREME);
+  feedback.textContent = '🗑️ 最高指令已清空。';
+  feedback.style.color = 'var(--text-muted)';
+}
+
+// ── 绑定最高指令 UI 事件 ──
+document.addEventListener('DOMContentLoaded', function() {
+  const btnOpen = document.getElementById('btn-supreme-directive');
+  const btnClose = document.getElementById('btn-close-supreme');
+  const btnSave = document.getElementById('btn-save-supreme');
+  const btnClear = document.getElementById('btn-clear-supreme');
+  const dialog = document.getElementById('supreme-directive-dialog');
+
+  if (btnOpen && dialog) {
+    btnOpen.addEventListener('click', openSupremeDirective);
+  }
+  if (btnClose && dialog) {
+    btnClose.addEventListener('click', function() { dialog.close(); });
+  }
+  if (btnSave) {
+    btnSave.addEventListener('click', saveSupremeDirective);
+  }
+  if (btnClear) {
+    btnClear.addEventListener('click', clearSupremeDirective);
+  }
+
+  // 点击弹窗外部关闭
+  if (dialog) {
+    dialog.addEventListener('click', function(e) {
+      if (e.target === dialog) dialog.close();
+    });
+  }
+});
