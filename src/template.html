@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>酒馆剧本格式转换工具</title>
+
+<!-- CSS_INJECT_POINT -->
+
+</head>
+<body>
+
+<!-- 全局导航栏 -->
+<header class="app-header">
+  <div class="logo">🎭 剧本格式路由中枢</div>
+  <nav class="app-nav">
+    <button id="nav-converter" class="nav-btn active">🔄 转换器</button>
+    <button id="nav-generator" class="nav-btn">✨ 剧本车间</button>
+    <button id="nav-library" class="nav-btn">📚 剧本库</button>
+  </nav>
+  <div class="header-actions">
+    <button id="btn-ai-config" class="icon-btn" title="AI 配置">🤖</button>
+    <button id="theme-toggle" class="icon-btn" title="切换主题">🌙</button>
+  </div>
+</header>
+
+<!-- 视图 1：转换器 -->
+<main id="view-converter" class="app-view active">
+  <div class="panel">
+    <div class="panel-header">
+      📜 输入
+      <span class="count" id="inputCount"></span>
+    </div>
+    <div class="panel-body">
+      <div class="batch-toggle">
+        <input type="checkbox" id="batchMode">
+        <label for="batchMode">批量模式</label>
+        <span class="badge-batch">BETA</span>
+      </div>
+
+      <div class="upload-zone" id="uploadZone">
+        <div class="icon">📫</div>
+        <div class="hint">
+          拖拽 JSON 文件到此处，或 <label for="fileInput">点击选择文件</label>
+          <span id="batchHint" style="display:none">（可多选）</span>
+        </div>
+        <input type="file" id="fileInput" accept=".json" multiple>
+      </div>
+
+      <div id="batchFileList" class="batch-file-list" style="display:none"></div>
+
+      <div id="batchActions" class="batch-actions" style="display:none">
+        <button class="btn btn-success" id="btnBatchDownloadAll">📝 全部下载</button>
+        <button class="btn btn-danger" id="btnBatchClear">🗑 清空列表</button>
+      </div>
+
+      <textarea id="jsonInput" placeholder="或直接粘贴 JSON 内容到这里..." spellcheck="false"></textarea>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      📛 输出
+      <span class="count" id="outputCount"></span>
+    </div>
+    <div class="panel-body">
+      <div class="output-actions">
+        <div class="format-selector" id="formatSelector">
+          <button class="format-opt active" data-format="markdown">📑 Markdown</button>
+          <button class="format-opt" data-format="chunchao">🌠 春潮</button>
+          <button class="format-opt" data-format="fengyue">🎲 风月</button>
+          <button class="format-opt" data-format="miss">🎵 MISS</button>
+        </div>
+      </div>
+      <div class="output-actions">
+        <button class="btn btn-success" id="btnCopy">📵 复制</button>
+        <button class="btn btn-primary" id="btnDownload">⬇ 下载</button>
+        <button class="btn btn-secondary" id="btnFormat">✨ 格式化</button>
+      </div>
+      <textarea id="outputArea" placeholder="解析成功后，此处显示转换结果..." spellcheck="false" readonly></textarea>
+    </div>
+  </div>
+</main>
+
+<!-- 视图 3：剧本车间（4 步向导） -->
+<main id="view-generator" class="app-view">
+  <div class="generator-workspace">
+    <!-- 顶部步进器 -->
+    <div class="wizard-stepper">
+      <div class="step active" data-step="1">
+        <span class="step-num">1</span>
+        <span class="step-label">灵感抽卡</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step" data-step="2">
+        <span class="step-num">2</span>
+        <span class="step-label">设定调优</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step" data-step="3">
+        <span class="step-num">3</span>
+        <span class="step-label">提示词生成</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step" data-step="4">
+        <span class="step-num">4</span>
+        <span class="step-label">世界书萃取</span>
+      </div>
+    </div>
+
+    <!-- 步骤 1：灵感抽卡 -->
+    <section id="gen-step-1" class="gen-step-content active">
+      <div class="seed-input-area">
+        <label class="seed-label">输入一句话灵感</label>
+        <textarea id="gen-seed-input" class="seed-textarea" placeholder="废土赛博朋克，主角是个只能活三天的赏金猎人..." spellcheck="false"></textarea>
+        <button id="btn-gen-cards" class="btn btn-primary btn-lg">🎲 生成 4 个方向</button>
+      </div>
+      <div id="gen-cards-container" class="cards-grid">
+        <div class="cards-placeholder">点击上方按钮，AI 将为你生成 4 个剧本方向</div>
+      </div>
+    </section>
+
+    <!-- 步骤 2：设定调优 -->
+    <section id="gen-step-2" class="gen-step-content" style="display:none">
+      <div class="refine-area">
+        <div class="refine-header">
+          <h3>📌 已选方向</h3>
+          <button id="btn-back-to-step1" class="btn btn-secondary btn-sm">← 返回重选</button>
+        </div>
+        <div id="gen-selected-card" class="selected-card-preview"></div>
+        <div class="refine-edit-area">
+          <label class="seed-label">调优指令（可选）</label>
+          <textarea id="gen-refine-input" class="seed-textarea" placeholder="把主角改成反派 / 增加克苏鲁元素..." spellcheck="false"></textarea>
+          <div class="refine-actions">
+            <button id="btn-refine-ai" class="btn btn-secondary">🔄 AI 调优</button>
+            <button id="btn-to-step-3" class="btn btn-primary">✨ 方向确认，生成提示词</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 步骤 3：提示词生成 -->
+    <section id="gen-step-3" class="gen-step-content" style="display:none">
+      <div class="prompt-gen-area">
+        <div class="refine-header">
+          <h3>📝 系统提示词</h3>
+          <button id="btn-back-to-step2" class="btn btn-secondary btn-sm">← 返回调优</button>
+        </div>
+        <textarea id="gen-prompt-output" class="prompt-output" readonly spellcheck="false"></textarea>
+        <div class="prompt-actions">
+          <button id="btn-copy-prompt" class="btn btn-secondary">📋 复制</button>
+          <button id="btn-regenerate-prompt" class="btn btn-secondary">🔄 重新生成</button>
+          <button id="btn-to-step-4" class="btn btn-primary">📖 萃取世界书</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 步骤 4：世界书萃取 -->
+    <section id="gen-step-4" class="gen-step-content" style="display:none">
+      <div class="wb-gen-area">
+        <div class="refine-header">
+          <h3>📚 世界书条目</h3>
+          <button id="btn-back-to-step3" class="btn btn-secondary btn-sm">← 返回提示词</button>
+        </div>
+        <div id="gen-wb-list" class="gen-wb-list">
+          <div class="cards-placeholder">正在萃取世界书...</div>
+        </div>
+        <div class="wb-gen-actions">
+          <button id="btn-regenerate-wb" class="btn btn-secondary">🔄 重新萃取</button>
+          <button id="btn-save-script" class="btn btn-success btn-lg">💾 保存剧本到本地</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<!-- 视图 2：剧本库（左右分栏） -->
+<main id="view-library" class="app-view">
+  <aside class="lib-sidebar">
+    <div class="lib-actions">
+      <button id="btn-mount-folder" class="btn btn-secondary btn-full">📂 挂载本地文件夹</button>
+      <div id="mount-status" class="mount-status">当前使用：浏览器缓存</div>
+    </div>
+    <div class="lib-search-box">
+      <input type="text" id="lib-search-input" placeholder="搜索剧本标题...">
+    </div>
+    <div class="lib-list" id="lib-list">
+      <!-- 剧本卡片渲染在这里 -->
+    </div>
+  </aside>
+
+  <section class="lib-detail" id="lib-detail">
+    <div class="empty-state">👈 请在左侧选择一个剧本以查看详情</div>
+  </section>
+</main>
+
+<!-- AI 配置弹窗 -->
+<dialog id="ai-config-dialog" class="ai-dialog">
+  <div class="ai-dialog-header">
+    <span>🤖 AI 配置</span>
+    <button id="btn-close-ai-config" class="icon-btn" title="关闭">✕</button>
+  </div>
+  <div class="ai-dialog-body">
+    <div class="ai-config-field">
+      <label for="ai-endpoint">API 端点</label>
+      <input type="url" id="ai-endpoint" placeholder="https://api.openai.com/v1/chat/completions" />
+    </div>
+    <div class="ai-config-field">
+      <label for="ai-model">模型</label>
+      <input type="text" id="ai-model" placeholder="gpt-4o / deepseek-chat / claude-3-haiku..." />
+    </div>
+    <div class="ai-config-field">
+      <label for="ai-key">API Key</label>
+      <input type="password" id="ai-key" placeholder="sk-..." />
+    </div>
+    <div class="ai-config-hint">
+      <p>💡 支持任何兼容 OpenAI API 格式的端点。</p>
+      <p>Key 仅存储在浏览器 localStorage 中，不会上传到任何第三方。</p>
+    </div>
+  </div>
+  <div class="ai-dialog-footer">
+    <button id="btn-test-ai" class="btn btn-secondary">🔌 测试连接</button>
+    <button id="btn-save-ai-config" class="btn btn-primary">💾 保存配置</button>
+  </div>
+</dialog>
+
+<div id="statusBar">
+  <span class="dot idle" id="statusDot"></span>
+  <span id="statusText">就绪 — 上传或粘贴剧本 JSON 开始转换</span>
+</div>
+
+<!-- 全局右键菜单 -->
+<div id="app-context-menu" class="context-menu" style="display:none">
+  <div class="menu-item" data-action="load">🪄 加载到转换器</div>
+  <div class="menu-divider"></div>
+  <div class="menu-item" data-action="export-md">📦 导出为 Markdown</div>
+  <div class="menu-item" data-action="export-chunchao">📦 导出为 春潮</div>
+  <div class="menu-item" data-action="export-fengyue">📦 导出为 风月</div>
+  <div class="menu-item" data-action="export-miss">📦 导出为 MISS</div>
+  <div class="menu-divider"></div>
+  <div class="menu-item" data-action="gen-html" style="color:var(--accent-primary)">✨ AI 铸造专属主题宣发页</div>
+  <div class="menu-divider"></div>
+  <div class="menu-item danger" data-action="delete">🗑️ 删除剧本</div>
+</div>
+
+<!-- JS_INJECT_POINT -->
+
+</body>
+</html>
