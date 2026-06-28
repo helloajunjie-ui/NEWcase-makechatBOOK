@@ -3,6 +3,16 @@
    Dark Mode First · CSS Token 体系 · 磁性微交互
    ═══════════════════════════════════════ */
 
+/* ── 樱花 WebGL 背景层 ── */
+#sakura-bg{
+  position:fixed;
+  top:0;left:0;
+  width:100vw;height:100vh;
+  z-index:-1;
+  pointer-events:none;
+  opacity:0.5;
+}
+
 /* ── Reset & Base ── */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
