@@ -1,4 +1,4 @@
-# 🧬 架构文档 — 酒馆剧本格式转换工具 → AI 剧本工坊
+# 🧬 架构文档 — 尼可剧本工具
 
 > **作者：尼可** · **QQ 群：1051068329**
 
@@ -72,8 +72,9 @@ interface UIF {
     language: string;
     orientation: string;    // 取向（春潮/MISS），风月无此字段 → fallback '通用'
     tags: string[];
-    source: string;         // 'chunchao' | 'fengyue' | 'miss'
+    source: string;         // 'chunchao' | 'fengyue' | 'miss' | 'generator'
     exportedAt: string|null;
+    protagonist: string;    // 玩家扮演角色（向导生成时设定）
   };
   assets: {
     coverUrl: string|null;
@@ -118,11 +119,12 @@ interface UIF {
 
 ### IndexedDB 存储结构
 
-数据库名：`ScriptLibrary`，表名：`scripts`
+数据库名：`ScriptLibrary`，表名：`scripts`，版本：`2`
 
 ```typescript
 interface DBScript {
-  id: number;               // 自动递增
+  id: number;               // 自动递增（主键）
+  uid: string;              // 确定性 UID（唯一索引），基于 title+sourceFormat+exportedAt 生成
   title: string;
   summary: string;          // 前 200 字
   tags: string[];
@@ -139,33 +141,47 @@ interface DBScript {
 }
 ```
 
-### 三视图 SPA 架构
+**UID 去重机制：** 外部导入 JSON 时，`dbAdd()` 先通过 `uid` 唯一索引查找是否已存在。存在则 `store.put()` 覆盖更新（保留原 `id` 和 `createdAt`），不存在则 `store.add()` 新增。同名同源文件重复导入不会产生冗余条目。
+
+### 六视图 SPA 架构
 
 ```
-┌─────────────────────────────────────────────────┐
-│                  App Shell                       │
-│  [📐 转换器] [🏭 剧本工坊] [📚 剧本库]  [⚙️ AI] │
-├─────────────────────────────────────────────────┤
-│                                                  │
-│  ┌─ Converter ──────────────────────────────┐   │
-│  │  输入面板（拖拽/粘贴/批量）               │   │
-│  │  输出面板（格式选择/复制/下载/ZIP）       │   │
-│  └───────────────────────────────────────────┘   │
-│                                                  │
-│  ┌─ Generator ──────────────────────────────┐   │
-│  │  Step 1 💡 脑暴抽卡 → 3 张概念卡         │   │
-│  │  Step 2 ✏️ 精修确认 → 编辑/合并/删除     │   │
-│  │  Step 3 📖 提示词膨胀 → 800+ 字 Prompt   │   │
-│  │  Step 4 🌍 世界书衍生 → 写入本地文件     │   │
-│  └───────────────────────────────────────────┘   │
-│                                                  │
-│  ┌─ Library ────────────────────────────────┐   │
-│  │  侧边栏：搜索 + 卡片列表                  │   │
-│  │  详情弹窗：元信息/提示词/世界书/宣发页    │   │
-│  │  右键菜单：复制/导出/删除                 │   │
-│  └───────────────────────────────────────────┘   │
-│                                                  │
-└─────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│                      App Shell                           │
+│  [📐 转换器] [🏭 工坊] [🧑 捏人] [🌍 世界观] [⚡ 体系] [📚 库]  [🤖 AI] │
+├──────────────────────────────────────────────────────────┤
+│                                                           │
+│  ┌─ Converter ───────────────────────────────────────┐   │
+│  │  输入面板（拖拽/粘贴/批量）                        │   │
+│  │  输出面板（格式选择/复制/下载/ZIP）                │   │
+│  └────────────────────────────────────────────────────┘   │
+│                                                           │
+│  ┌─ Generator ───────────────────────────────────────┐   │
+│  │  Step 1 💡 脑暴抽卡 → 3 张概念卡                  │   │
+│  │  Step 2 ✏️ 精修确认 → 编辑/导入素材/设定主角      │   │
+│  │  Step 3 📖 提示词膨胀 → 800+ 字 Prompt            │   │
+│  │  Step 4 🌍 世界书衍生 + 宣发页铸造 → 保存入库     │   │
+│  └────────────────────────────────────────────────────┘   │
+│                                                           │
+│  ┌─ Char Creator ────────────────────────────────────┐   │
+│  │  一句话 → AI 生成完整人物档案 → 复制/导入流水线   │   │
+│  └────────────────────────────────────────────────────┘   │
+│                                                           │
+│  ┌─ World Builder ───────────────────────────────────┐   │
+│  │  一句话 → AI 构建世界观 → 复制/导入流水线          │   │
+│  └────────────────────────────────────────────────────┘   │
+│                                                           │
+│  ┌─ Power Builder ───────────────────────────────────┐   │
+│  │  一句话 → AI 设计力量体系 → 复制/导入流水线        │   │
+│  └────────────────────────────────────────────────────┘   │
+│                                                           │
+│  ┌─ Library ─────────────────────────────────────────┐   │
+│  │  侧边栏：搜索 + 卡片列表（含 🌐 宣发页状态徽章）   │   │
+│  │  详情弹窗：元信息/宣发页/提示词/世界书             │   │
+│  │  右键菜单：复制/导出/删除                          │   │
+│  └────────────────────────────────────────────────────┘   │
+│                                                           │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -217,9 +233,9 @@ interface DBScript {
 
 | UIF 字段 | 春潮来源 | 风月来源 | MISS来源 |
 |---------|---------|---------|---------|
-| `landingPage` | `work.detailIntro` | `description` | `description` |
+| `landingPage` | `work.detailIntro` (HTML 检测) | `description` (纯文本) | `description` (HTML 检测) |
 
-源 JSON 中已有的 HTML 宣发页自动提取到 UIF，入库时写入 `htmlLandingPage` 字段，详情页直接预览/下载。
+源 JSON 中已有的 HTML 宣发页自动提取到 UIF。春潮和 MISS 的 `description`/`detailIntro` 字段可能包含完整 HTML 网页代码，解析器检测 `<!DOCTYPE` 或 `<html` 标记后提取为 `landingPage`，同时剥离标签取纯文本作为 `meta.description`。
 
 ### Elegant Join 拼接规则
 
@@ -260,19 +276,16 @@ postPrompt   = [suffixPrompt, postText ? `[后置补充: ${postText}]` : ''].fil
 
 ```javascript
 const genState = {
+  step: 1,
   seed: '',           // Step 1 种子输入
-  cards: [],          // Step 1 AI 生成的概念卡
-  selectedIndex: -1,  // Step 2 当前选中的卡片
-  refinedText: '',    // Step 2 精修后的设定文本
-  prompts: {          // Step 3 AI 膨胀后的提示词
-    mainPrompt: '',
-    suffixPrompt: '',
-    worldview: '',
-    identityStyle: '',
-    writingStyle: '',
-  },
+  drafts: [],         // Step 1 AI 生成的 4 个方向
+  selectedIdx: -1,    // Step 2 选中的卡片索引
+  selectedDraft: null,// Step 2 选中的卡片对象
+  prompts: null,      // Step 3 AI 膨胀后的提示词 { systemPrompt, outline, expanded }
   worldBook: [],      // Step 4 AI 生成的世界书
-  currentStep: 1,     // 当前步骤 (1-4)
+  materials: [],      // Step 2 导入的素材（捏人/世界观/体系）
+  protagonist: '',    // Step 2 设定的玩家扮演角色
+  _landingPage: '',   // Step 4 AI 铸造的宣发页 HTML
 };
 ```
 
@@ -281,9 +294,24 @@ const genState = {
 | 步骤 | 输入 | AI 任务 | 输出 |
 |------|------|---------|------|
 | 1 💡 | 种子词/梗概 | 生成 3 张概念卡（角色/世界观/核心冲突），严格 JSON 格式 | `{cards: [{title, type, description, tags}]}` |
-| 2 ✏️ | 3 张概念卡 | 用户手动编辑/合并/删除 | 精修后的设定文本 |
-| 3 📖 | 精修设定 | 扩展为 800+ 字结构化 System Prompt | `{mainPrompt, suffixPrompt, worldview, identityStyle, writingStyle}` |
-| 4 🌍 | 完整提示词 | 生成世界书条目 + 写入本地文件 | 世界书数组 + 物理文件 |
+| 2 ✏️ | 3 张概念卡 + 可选素材 | 用户手动编辑/合并/删除；可导入捏人/世界观/体系素材；设定玩家扮演角色 | 精修后的设定文本 + 素材列表 + 主角 |
+| 3 📖 | 精修设定 + 素材 + 主角 | 扩展为 800+ 字结构化 System Prompt，融合素材和主角身份 | `{mainPrompt, suffixPrompt, worldview, identityStyle, writingStyle}` |
+| 4 🌍 | 完整提示词 | 生成世界书条目；支持追加指令迭代扩充；AI 铸造宣发页；保存入库 | 世界书数组 + 宣发页 HTML + IndexedDB 条目 |
+
+### 流水线集成
+
+三个独立工坊（捏人/世界观/体系）的产出通过 `localStorage` 传递到剧本工坊：
+
+```
+🧑 捏人工坊 → localStorage._last_char_result
+🌍 世界观构建 → localStorage._last_world_result
+⚡ 体系工坊 → localStorage._last_power_result
+
+剧本工坊 Step 2:
+  ┌─ 点击 "🧑 导入捏人" → 读取 _last_char_result → 注入 prompt 上下文
+  ├─ 点击 "🌍 导入世界观" → 读取 _last_world_result → 注入 prompt 上下文
+  └─ 点击 "⚡ 导入体系" → 读取 _last_power_result → 注入 prompt 上下文
+```
 
 ### AI 配置（BYOK）
 
@@ -299,9 +327,9 @@ const genState = {
 ### 自动提取（源 JSON 已有）
 
 导入剧本时，解析器自动从源 JSON 提取嵌入式 HTML 宣发页：
-- **春潮**：`work.detailIntro` → `landingPage`
-- **风月**：`description` → `landingPage`
-- **MISS**：`description` → `landingPage`
+- **春潮**：`work.detailIntro` → 检测 `<!DOCTYPE`/`<html` → 提取为 `landingPage`
+- **风月**：`description` → 纯文本，无 HTML 检测
+- **MISS**：`description` → 检测 `<!DOCTYPE`/`<html` → 提取为 `landingPage`
 
 入库后详情页直接显示 "✅ 已铸造"，支持 **预览** 和 **下载**。
 
@@ -329,6 +357,60 @@ const genState = {
 2. AI 生成 HTML → 自动入库（同时更新 `uif.landingPage` 和 `htmlLandingPage`）
 3. 详情页刷新显示 ✅ 已铸造
 4. 支持 **预览**（Blob URL 新标签页）/ **下载**（独立 HTML 文件）/ **重新铸造**
+
+---
+
+## 🎨 樱花动态背景
+
+### 实现方案
+
+通过 JS 动态创建 Canvas 元素，使用 WebGL 渲染 800 个 3D 樱花粒子，带景深模糊（Depth-of-Field）和辉光（Bloom）后处理。
+
+**关键设计：**
+- **零 HTML 侵入**：`document.createElement('canvas')` 在 `initSakuraBg()` 中动态创建
+- **不干扰交互**：`position:fixed; z-index:-1; pointer-events:none; opacity:0.5`
+- **性能优化**：粒子数从原始 1600 减至 800
+- **Shader 内联**：8 个 GLSL shader 编码为 JS 字符串常量 `SAKURA_SHADERS` 对象，无 DOM `<script id="...">` 依赖
+- **自动适配**：所有视图通用，自动适配明暗主题
+
+### 文件结构
+
+```
+樱花特效背景.html  →  原始 WebGL 源码（1095 行）
+sakura_inject.js   →  注入脚本，将 shader 内联为 JS 常量
+src/main.js        →  initSakuraBg() 函数（~230 行 WebGL 逻辑）
+```
+
+---
+
+## 🗄️ IndexedDB 数据流
+
+```
+外部导入 JSON
+     │
+     ▼
+parseJSON(raw)
+  ├─ detectFormat() → chunchao/fengyue/miss
+  ├─ parseXxx() → UIF (含 landingPage HTML 提取)
+  └─ generateUid() → 12 位十六进制 UID
+     │
+     ▼
+dbAdd(uif)
+  ├─ dbFindByUid(uid) → 已存在?
+  │   ├─ 是 → store.put() 覆盖更新（保留 id + createdAt）
+  │   └─ 否 → store.add() 新增
+  │
+  ▼
+renderLibList() 刷新
+
+向导保存
+     │
+     ▼
+构建 script UIF → dbAdd(dbEntry)
+  ├─ uid 从 script.meta 生成
+  ├─ htmlLandingPage 从 genState._landingPage 写入
+  └─ protagonist 从 genState.protagonist 写入 meta
+```
 
 ---
 
@@ -365,6 +447,8 @@ const genState = {
 | parser 未提取嵌入式 HTML 宣发页 | [`src/main.js:311,355,400`](src/main.js:311) | 三个 parser 未将 `description`/`detailIntro` 中的 HTML 提取到独立字段；新增 `landingPage` 字段 |
 | `dbAdd()` 未存储宣发页 | [`src/main.js:616`](src/main.js:616) | 入库时未将 `uif.landingPage` 写入 `htmlLandingPage`；新增字段映射 |
 | AI 铸造未同步 UIF 顶层 | [`src/main.js:1825`](src/main.js:1825) | `generateLandingPage()` 只更新了 `htmlLandingPage`，未同步 `uif.landingPage`；修复为双写 |
+| `parseMiss` 未检测 HTML | [`src/main.js:384`](src/main.js:384) | MISS 的 `description` 字段可能包含完整 HTML，但解析器只是简单赋值；增加 `<!DOCTYPE`/`<html` 检测逻辑 |
+| 同名 JSON 重复导入导致数据冗余 | [`src/main.js:605`](src/main.js:605) | 无 UID 去重机制，每次导入都创建新条目；新增 `generateUid()` + `dbFindByUid()` + `dbAdd()` upsert 模式 |
 
 ### 已知合理信息丢失（平台 schema 差异，非 Bug）
 
@@ -446,7 +530,7 @@ function parseXxx(raw) {
       flexArr(raw, 'worldBook', 'world_book', 'entries', 'wb'),
       'xxx'
     ),
-    landingPage: flexStr(raw, 'description', 'detailIntro', 'intro', 'landingPage') || '',
+    landingPage: extractLandingPage(raw, 'description', 'detailIntro', 'intro'),
     extras: {
       customCss: findCustomCss(raw),
       quickCommands: flexArr(raw, 'quickCommands', 'quick_cmd', 'commands'),
@@ -469,7 +553,7 @@ function parseXxx(raw) {
 **关键原则：**
 - 所有字段查找使用 `flexGet` 系列函数，支持多个备选 key 名
 - 缺失字段返回 `null`/`''`/`[]`，**绝不抛异常**
-- `landingPage` 从源 JSON 的 HTML 字段提取（如 `description`、`detailIntro`）
+- `landingPage` 从源 JSON 的 HTML 字段提取（检测 `<!DOCTYPE`/`<html` 标记）
 - `worldBook` 统一用 `parseWorldBookEntries()` 处理
 - `_raw` 保留原始 JSON，用于无损回渲
 
@@ -593,6 +677,7 @@ node build.js              # 重新构建 index.html
 - 部分平台特有字段（如 MISS 的 `characterID`）在转换中会置空，需手动补充
 - 风月的 `post_text` 是复合字段，解析时通过 `findSuffixPrompt`/`findPostText` 智能拆分
 - 宣发页 HTML 存储在 IndexedDB 中，导出时需手动下载
+- 同名同源 JSON 文件重复导入会自动覆盖更新（基于 UID 去重），不会产生重复条目
 
 ---
 
@@ -600,4 +685,4 @@ node build.js              # 重新构建 index.html
 
 **作者：尼可** · **QQ 群：1051068329** · 欢迎进群交流反馈
 
-*最后更新: 2026-06-28 (v3 — AI 剧本工坊、宣发页自动提取、三视图 SPA)*
+*最后更新: 2026-06-28 (v4 — UID 去重、流水线集成、六视图 SPA、樱花背景)*
