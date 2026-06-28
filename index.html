@@ -2616,6 +2616,7 @@ async function renderLibList() {
       const activeClass = viewingLibId === e.id ? ' active' : '';
       const tags = (e.tags || []).slice(0, 3).join(', ');
       const wbCount = e.worldBookCount || 0;
+      const hasHtml = !!e.htmlLandingPage;
       return '<div class="lib-card' + activeClass + '" data-id="' + e.id + '">' +
         '<button class="lib-card-del" data-id="' + e.id + '" title="删除">✕</button>' +
         '<div class="lib-card-top">' +
@@ -2627,6 +2628,7 @@ async function renderLibList() {
           '<span>📖 ' + wbCount + ' 条</span>' +
           '<span>📝 ' + (e.promptLength || 0) + ' 字</span>' +
           (tags ? '<span>🏷 ' + escapeHtml(tags) + '</span>' : '') +
+          '<span class="lib-card-html-badge" title="' + (hasHtml ? '点击预览宣发页' : '点击生成宣发页') + '" style="cursor:pointer;' + (hasHtml ? 'color:var(--accent-primary)' : 'color:var(--text-dim);opacity:0.5') + '">' + (hasHtml ? '🌐' : '🌐') + '</span>' +
         '</div>' +
       '</div>';
     }).join('');
@@ -2655,6 +2657,27 @@ async function renderLibList() {
           if (libDetail) libDetail.innerHTML = '<div class="empty-state">👈 请在左侧选择一个剧本以查看详情</div>';
         }
         renderLibList();
+      });
+    });
+
+    // HTML badge click -> preview or generate
+    libList.querySelectorAll('.lib-card-html-badge').forEach(badge => {
+      badge.addEventListener('click', async e => {
+        e.stopPropagation();
+        const card = badge.closest('.lib-card');
+        const id = Number(card.dataset.id);
+        const entry = await dbGet(id);
+        if (entry && entry.htmlLandingPage) {
+          // 已有宣发页 → 预览
+          const w = window.open('', '_blank');
+          if (w) {
+            w.document.write(entry.htmlLandingPage);
+            w.document.close();
+          }
+        } else {
+          // 没有 → 生成
+          generateLandingPage(id);
+        }
       });
     });
   } catch (e) {
@@ -2689,6 +2712,23 @@ async function showDetailInPanel(id) {
     if (meta.source) html += '<div class="modal-field"><span class="modal-field-label">来源</span><span class="modal-field-value">' + escapeHtml(meta.source) + '</span></div>';
     if (meta.exportedAt) html += '<div class="modal-field"><span class="modal-field-label">导出时间</span><span class="modal-field-value">' + escapeHtml(meta.exportedAt) + '</span></div>';
     if (tags) html += '<div class="modal-tags" style="margin-top:8px">' + tags + '</div>';
+    html += '</div>';
+
+    // Landing page status (放在基本信息之后，prompt 之前)
+    var hasLandingPage = !!entry.htmlLandingPage;
+    html += '<div class="modal-section">';
+    html += '<div class="modal-section-title">🌐 专属宣发页</div>';
+    if (hasLandingPage) {
+      html += '<div class="modal-field"><span class="modal-field-label">状态</span><span class="modal-field-value" style="color:var(--accent-primary)">✅ 已铸造</span></div>';
+      html += '<div style="margin-top:8px;display:flex;gap:8px">';
+      html += '<button class="btn btn-sm" id="btnPreviewHtml" style="background:var(--accent-primary);color:#fff">👁 预览</button>';
+      html += '<button class="btn btn-sm btn-secondary" id="btnDownloadHtml">⬇ 下载</button>';
+      html += '<button class="btn btn-sm btn-secondary" id="btnRegenHtml">🔄 重新铸造</button>';
+      html += '</div>';
+    } else {
+      html += '<div class="modal-field"><span class="modal-field-label">状态</span><span class="modal-field-value" style="color:var(--text-secondary)">⏳ 尚未铸造</span></div>';
+      html += '<div style="margin-top:8px"><button class="btn btn-sm" id="btnGenHtml" style="background:var(--accent-primary);color:#fff">✨ AI 铸造专属主题宣发页</button></div>';
+    }
     html += '</div>';
 
     // Main prompt
@@ -2740,23 +2780,6 @@ async function showDetailInPanel(id) {
       });
       html += '</div></div>';
     }
-
-    // Landing page status
-    var hasLandingPage = !!entry.htmlLandingPage;
-    html += '<div class="modal-section">';
-    html += '<div class="modal-section-title">🌐 专属宣发页</div>';
-    if (hasLandingPage) {
-      html += '<div class="modal-field"><span class="modal-field-label">状态</span><span class="modal-field-value" style="color:var(--accent-primary)">✅ 已铸造</span></div>';
-      html += '<div style="margin-top:8px;display:flex;gap:8px">';
-      html += '<button class="btn btn-sm" id="btnPreviewHtml" style="background:var(--accent-primary);color:#fff">👁 预览</button>';
-      html += '<button class="btn btn-sm btn-secondary" id="btnDownloadHtml">⬇ 下载</button>';
-      html += '<button class="btn btn-sm btn-secondary" id="btnRegenHtml">🔄 重新铸造</button>';
-      html += '</div>';
-    } else {
-      html += '<div class="modal-field"><span class="modal-field-label">状态</span><span class="modal-field-value" style="color:var(--text-secondary)">⏳ 尚未铸造</span></div>';
-      html += '<div style="margin-top:8px"><button class="btn btn-sm" id="btnGenHtml" style="background:var(--accent-primary);color:#fff">✨ AI 铸造专属主题宣发页</button></div>';
-    }
-    html += '</div>';
 
     // Action buttons
     html += '<div class="lib-detail-actions">';
