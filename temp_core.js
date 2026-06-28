@@ -1,10 +1,7 @@
 // ═══════════════════════════════════════
-//  核心函数提取（从 src/main.js）
-//  供 test_convert.js / audit_mapping.js 使用
 // ═══════════════════════════════════════
-
-// ── 2. 工具函数 ──
-
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
 function flexGet(obj, ...keys) {
   if (!obj || typeof obj !== 'object') return undefined;
   for (const k of keys) {
@@ -12,29 +9,24 @@ function flexGet(obj, ...keys) {
   }
   return undefined;
 }
-
 function flexStr(obj, ...keys) {
   const v = flexGet(obj, ...keys);
   return v !== undefined ? String(v) : '';
 }
-
 function flexArr(obj, ...keys) {
   const v = flexGet(obj, ...keys);
   return Array.isArray(v) ? v : [];
 }
-
 function flexBool(obj, ...keys) {
   const v = flexGet(obj, ...keys);
   return v === true || v === 'true';
 }
-
 function flexNum(obj, fallback, ...keys) {
   const v = flexGet(obj, ...keys);
   if (v === undefined || v === null) return fallback;
   const n = Number(v);
   return isNaN(n) ? fallback : n;
 }
-
 function findWorldBook(obj) {
   if (!obj || typeof obj !== 'object') return [];
   for (const key of ['worldBookEntries', 'world_book', 'worldBook', 'entries', 'worldBookEntry']) {
@@ -49,7 +41,6 @@ function findWorldBook(obj) {
   }
   return [];
 }
-
 function findMainPrompt(obj) {
   if (!obj || typeof obj !== 'object') return '';
   for (const key of ['mainPrompt', 'pre_prompt', 'systemPrompt', 'main_prompt', 'prompt']) {
@@ -66,7 +57,6 @@ function findMainPrompt(obj) {
   }
   return '';
 }
-
 function findSuffixPrompt(obj) {
   if (!obj || typeof obj !== 'object') return '';
   for (const key of ['suffixPrompt', 'postPrompt', 'post_prompt', 'postPromptText']) {
@@ -82,12 +72,10 @@ function findSuffixPrompt(obj) {
   }
   return '';
 }
-
 function findPostText(obj) {
   if (!obj || typeof obj !== 'object') return '';
   return flexStr(obj, 'post_text', 'postText', 'posttext');
 }
-
 function findCustomCss(obj) {
   if (!obj || typeof obj !== 'object') return '';
   for (const key of ['customCss', 'customCSS', 'builtInCss', 'built_in_css', 'custom_css', 'css']) {
@@ -99,7 +87,6 @@ function findCustomCss(obj) {
   }
   return '';
 }
-
 function findCoverUrl(obj) {
   if (!obj || typeof obj !== 'object') return null;
   for (const key of ['coverUrl', 'cover', 'cover_url', 'coverImage', 'cover_image']) {
@@ -112,7 +99,6 @@ function findCoverUrl(obj) {
   }
   return null;
 }
-
 function findBgUrl(obj) {
   if (!obj || typeof obj !== 'object') return null;
   for (const key of ['bgImageUrl', 'bg_image', 'bgImage', 'backgroundImage', 'bg_url']) {
@@ -125,7 +111,6 @@ function findBgUrl(obj) {
   }
   return null;
 }
-
 function findTags(obj) {
   if (!obj || typeof obj !== 'object') return [];
   for (const key of ['tags', 'tagIds', 'tag_ids', 'categories', 'categoryIds']) {
@@ -153,7 +138,6 @@ function findTags(obj) {
   }
   return [];
 }
-
 function findOrientation(obj) {
   if (!obj || typeof obj !== 'object') return '';
   for (const key of ['orientation', 'genderOrientation', 'gender_orientation']) {
@@ -168,17 +152,14 @@ function findOrientation(obj) {
   }
   return '';
 }
-
 function findExportedAt(obj) {
   if (!obj || typeof obj !== 'object') return null;
   return flexGet(obj, 'exportedAt', 'exported_at', 'exportTime', 'export_time', 'createdAt', 'createTime');
 }
-
 function findLanguage(obj) {
   if (!obj || typeof obj !== 'object') return 'zh-Hans';
   return flexStr(obj, 'language', 'lang', 'locale');
 }
-
 function findQuickCommands(obj) {
   if (!obj || typeof obj !== 'object') return [];
   for (const key of ['quickCommands', 'shortcut_commands', 'shortcutCommands', 'commands']) {
@@ -190,19 +171,16 @@ function findQuickCommands(obj) {
   }
   return [];
 }
-
 function findBannedWords(obj) {
   if (!obj || typeof obj !== 'object') return [];
   return flexArr(obj, 'banned_words', 'bannedWords', 'blockedWords', 'blocked_words', 'blacklist');
 }
-
 function findSuggestedQuestions(obj) {
   if (!obj || typeof obj !== 'object') return [];
   return flexArr(obj, 'suggested_questions', 'suggestedQuestions', 'starterQuestions', 'questions');
 }
-
-// ── 3. 格式检测 ──
-
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
 function detectFormat(raw) {
   if (!raw || typeof raw !== 'object') return null;
   if (raw.work && typeof raw.work === 'object' && raw.work.title) return 'chunchao';
@@ -212,16 +190,25 @@ function detectFormat(raw) {
   if (raw.name && raw.description && raw.tags) return 'fengyue';
   return null;
 }
-
-// ── 4. 解析器 ──
-
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
 function parseChunchao(raw) {
   const w = raw.work || raw;
+  // 从 detailIntro/description 提取 HTML 网页（如果存在）
+  var rawDesc = flexStr(w, 'detailIntro', 'description', 'intro') || '';
+  var landingPage = '';
+  var plainDesc = rawDesc;
+  if (rawDesc.indexOf('<!DOCTYPE') !== -1 || rawDesc.indexOf('<html') !== -1) {
+    landingPage = rawDesc;
+    // 去掉 HTML 标签取纯文本作为 description
+    plainDesc = rawDesc.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+    if (plainDesc.length > 500) plainDesc = plainDesc.slice(0, 500);
+  }
   return {
     meta: {
       title: flexStr(w, 'title', 'name'),
       summary: (flexStr(w, 'intro', 'summary', 'description') || '').split('\n')[0].trim(),
-      description: flexStr(w, 'detailIntro', 'description', 'intro'),
+      description: plainDesc,
       language: findLanguage(w) || 'zh-Hans',
       orientation: findOrientation(w),
       tags: findTags(w),
@@ -244,7 +231,7 @@ function parseChunchao(raw) {
       writingStyle: '',
     },
     worldBook: parseWorldBookEntries(findWorldBook(w), 'chunchao'),
-    landingPage: flexStr(w, 'detailIntro', 'description', 'intro') || '',
+    landingPage: landingPage,
     extras: {
       customCss: findCustomCss(w),
       quickCommands: findQuickCommands(w),
@@ -260,7 +247,6 @@ function parseChunchao(raw) {
     },
   };
 }
-
 function parseFengyue(raw) {
   return {
     meta: {
@@ -305,14 +291,23 @@ function parseFengyue(raw) {
     },
   };
 }
-
 function parseMiss(raw) {
   const pd = raw.promptData || {};
+  // 从 description/detailIntro 提取 HTML 网页（如果存在）
+  var rawDesc = flexStr(raw, 'description', 'detailIntro') || '';
+  var landingPage = '';
+  var plainDesc = rawDesc;
+  if (rawDesc.indexOf('<!DOCTYPE') !== -1 || rawDesc.indexOf('<html') !== -1) {
+    landingPage = rawDesc;
+    // 去掉 HTML 标签取纯文本作为 description
+    plainDesc = rawDesc.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+    if (plainDesc.length > 500) plainDesc = plainDesc.slice(0, 500);
+  }
   return {
     meta: {
       title: flexStr(raw, 'name', 'title'),
       summary: flexStr(raw, 'summary', 'intro').split('\n')[0].trim(),
-      description: flexStr(raw, 'description', 'detailIntro'),
+      description: plainDesc,
       language: findLanguage(raw) || 'zh-Hans',
       orientation: findOrientation(raw),
       tags: findTags(raw),
@@ -335,7 +330,7 @@ function parseMiss(raw) {
       writingStyle: flexStr(pd, 'writingStylePrompt', 'writingStyle'),
     },
     worldBook: parseWorldBookEntries(findWorldBook(raw), 'miss'),
-    landingPage: flexStr(raw, 'description', 'detailIntro') || '',
+    landingPage: landingPage,
     extras: {
       customCss: findCustomCss(raw),
       quickCommands: [],
@@ -351,9 +346,8 @@ function parseMiss(raw) {
     },
   };
 }
-
-// ── 5. 世界书条目解析 ──
-
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
 function parseWorldBookEntries(entries, sourceFormat) {
   if (!Array.isArray(entries)) return [];
   return entries.map((e, i) => {
@@ -364,28 +358,8 @@ function parseWorldBookEntries(entries, sourceFormat) {
     } else if (typeof rawKey === 'string') {
       keywords = rawKey.split(/@wb@/).map(s => s.replace(/^_or_/, '').replace(/^_and_/, '')).filter(Boolean);
     }
-    const group = flexStr(e, 'groupName', 'group', 'group_name', 'category');
-    const content = flexStr(e, 'content', 'value', 'text', 'description', 'desc');
-    let matchMode = 'any';
-    const rawMode = flexGet(e, 'matchMode', 'match_mode', 'matchType', 'match_type');
-    if (rawMode === 'all' || rawMode === 1 || rawMode === true || rawMode === '1') matchMode = 'all';
-    if (e.and === true) matchMode = 'all';
-    return {
-      id: 'wb_' + i,
-      group: group || '默认',
-      keywords: keywords,
-      content: content,
-      enabled: e.enabled !== false && e.enable !== false,
-      probability: flexNum(e, 100, 'probability', 'prob', 'chance'),
-      matchMode: matchMode,
-      scanDepth: flexNum(e, 8, 'scanDepth', 'scan_depth', 'depth', 'key_region', 'scanRegions'),
-      sortOrder: flexNum(e, i, 'sortOrder', 'sort_order', 'sort', 'order', 'ord'),
-    };
-  });
-}
-
-// ── 6. 主解析入口 ──
-
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
 function parseJSON(raw) {
   const fmt = detectFormat(raw);
   if (!fmt) throw new Error('无法识别的剧本格式，请确认 JSON 结构是否正确');
@@ -400,9 +374,8 @@ function parseJSON(raw) {
   uif._raw = raw;
   return uif;
 }
-
-// ── 7. 渲染器 ──
-
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
 function renderMarkdown(uif) {
   const { meta, assets, prompts, worldBook, extras } = uif;
   let md = '# ' + meta.title + '\n\n';
@@ -432,7 +405,6 @@ function renderMarkdown(uif) {
   }
   return md;
 }
-
 function renderChunchao(uif) {
   const { meta, assets, prompts, worldBook, extras } = uif;
   return JSON.stringify({
@@ -458,7 +430,6 @@ function renderChunchao(uif) {
     },
   }, null, 2);
 }
-
 function renderFengyue(uif) {
   const { meta, assets, prompts, worldBook, extras } = uif;
   return JSON.stringify({
@@ -484,7 +455,6 @@ function renderFengyue(uif) {
     tags: meta.tags.map(t => ({ name: t, __isNew: true })),
   }, null, 2);
 }
-
 function renderMiss(uif) {
   const { meta, prompts, worldBook, extras } = uif;
   return JSON.stringify({
@@ -506,3 +476,37 @@ function renderMiss(uif) {
     })),
   }, null, 2);
 }
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════
+// ═══════════════════════════════════════

@@ -2198,11 +2198,21 @@ function detectFormat(raw) {
 
 function parseChunchao(raw) {
   const w = raw.work || raw;
+  // 从 detailIntro/description 提取 HTML 网页（如果存在）
+  var rawDesc = flexStr(w, 'detailIntro', 'description', 'intro') || '';
+  var landingPage = '';
+  var plainDesc = rawDesc;
+  if (rawDesc.indexOf('<!DOCTYPE') !== -1 || rawDesc.indexOf('<html') !== -1) {
+    landingPage = rawDesc;
+    // 去掉 HTML 标签取纯文本作为 description
+    plainDesc = rawDesc.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+    if (plainDesc.length > 500) plainDesc = plainDesc.slice(0, 500);
+  }
   return {
     meta: {
       title: flexStr(w, 'title', 'name'),
       summary: (flexStr(w, 'intro', 'summary', 'description') || '').split('\n')[0].trim(),
-      description: flexStr(w, 'detailIntro', 'description', 'intro'),
+      description: plainDesc,
       language: findLanguage(w) || 'zh-Hans',
       orientation: findOrientation(w),
       tags: findTags(w),
@@ -2225,7 +2235,7 @@ function parseChunchao(raw) {
       writingStyle: '',
     },
     worldBook: parseWorldBookEntries(findWorldBook(w), 'chunchao'),
-    landingPage: flexStr(w, 'detailIntro', 'description', 'intro') || '',
+    landingPage: landingPage,
     extras: {
       customCss: findCustomCss(w),
       quickCommands: findQuickCommands(w),
@@ -2289,11 +2299,21 @@ function parseFengyue(raw) {
 
 function parseMiss(raw) {
   const pd = raw.promptData || {};
+  // 从 description/detailIntro 提取 HTML 网页（如果存在）
+  var rawDesc = flexStr(raw, 'description', 'detailIntro') || '';
+  var landingPage = '';
+  var plainDesc = rawDesc;
+  if (rawDesc.indexOf('<!DOCTYPE') !== -1 || rawDesc.indexOf('<html') !== -1) {
+    landingPage = rawDesc;
+    // 去掉 HTML 标签取纯文本作为 description
+    plainDesc = rawDesc.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+    if (plainDesc.length > 500) plainDesc = plainDesc.slice(0, 500);
+  }
   return {
     meta: {
       title: flexStr(raw, 'name', 'title'),
       summary: flexStr(raw, 'summary', 'intro').split('\n')[0].trim(),
-      description: flexStr(raw, 'description', 'detailIntro'),
+      description: plainDesc,
       language: findLanguage(raw) || 'zh-Hans',
       orientation: findOrientation(raw),
       tags: findTags(raw),
@@ -2316,7 +2336,7 @@ function parseMiss(raw) {
       writingStyle: flexStr(pd, 'writingStylePrompt', 'writingStyle'),
     },
     worldBook: parseWorldBookEntries(findWorldBook(raw), 'miss'),
-    landingPage: flexStr(raw, 'description', 'detailIntro') || '',
+    landingPage: landingPage,
     extras: {
       customCss: findCustomCss(raw),
       quickCommands: [],
@@ -2499,7 +2519,7 @@ function renderMiss(uif) {
 // ═══════════════════════════════════════
 
 const DB_NAME = 'ScriptLibrary';
-const DB_VER = 1;
+const DB_VER = 2;
 const STORE_NAME = 'scripts';
 
 function openDB() {
@@ -2512,9 +2532,45 @@ function openDB() {
         store.createIndex('title', 'title', { unique: false });
         store.createIndex('sourceFormat', 'sourceFormat', { unique: false });
         store.createIndex('createdAt', 'createdAt', { unique: false });
+        store.createIndex('uid', 'uid', { unique: true });
+      } else {
+        // 版本升级：为已有 store 添加 uid 索引
+        if (!e.target.transaction.objectStore(STORE_NAME).indexNames.contains('uid')) {
+          e.target.transaction.objectStore(STORE_NAME).createIndex('uid', 'uid', { unique: true });
+        }
       }
     };
     req.onsuccess = e => resolve(e.target.result);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+// 基于剧本元数据生成确定性 UID（12 位十六进制）
+function generateUid(uifData) {
+  var seed = (uifData.meta ? uifData.meta.title : uifData.title || '') + '|' +
+    (uifData._sourceFormat || uifData.sourceFormat || '') + '|' +
+    (uifData.meta ? uifData.meta.exportedAt : '');
+  // 简单哈希：crc32 风格，保证确定性
+  var hash = 0;
+  for (var i = 0; i < seed.length; i++) {
+    var ch = seed.charCodeAt(i);
+    hash = ((hash << 5) - hash) + ch;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  // 转 12 位十六进制，补零
+  return 'u' + (Math.abs(hash) % 0xFFFFFFFF).toString(16).padStart(8, '0') + '_' + Date.now().toString(36).slice(-3);
+}
+
+// 通过 uid 查找已有条目
+async function dbFindByUid(uid) {
+  if (!uid) return null;
+  const db = await openDB();
+  const tx = db.transaction(STORE_NAME, 'readonly');
+  const store = tx.objectStore(STORE_NAME);
+  const index = store.index('uid');
+  return new Promise((resolve, reject) => {
+    const req = index.get(uid);
+    req.onsuccess = () => resolve(req.result || null);
     req.onerror = e => reject(e.target.error);
   });
 }
@@ -2523,21 +2579,42 @@ async function dbAdd(uif) {
   const db = await openDB();
   const tx = db.transaction(STORE_NAME, 'readwrite');
   const store = tx.objectStore(STORE_NAME);
+  // 兼容两种调用方式：
+  // 1. dbAdd(uifObject) — 解析器导入时，uif.landingPage 存 HTML
+  // 2. dbAdd(dbEntry) — 向导保存时，dbEntry.uif 是 script 对象，dbEntry.htmlLandingPage 已设
+  var landingPage = uif.htmlLandingPage || (uif.uif && uif.uif.landingPage) || uif.landingPage || '';
+  var uifData = uif.uif || uif;  // 如果传的是 dbEntry，取内部的 uif
+  var uid = uif.uid || uifData.uid || generateUid(uifData);
   const entry = {
-    title: uif.meta.title || '未命名剧本',
-    summary: (uif.meta.summary || '').slice(0, 200),
-    tags: uif.meta.tags || [],
-    orientation: uif.meta.orientation || '',
-    sourceFormat: uif._sourceFormat || '',
-    worldBookCount: (uif.worldBook || []).length,
-    promptLength: (uif.prompts.mainPrompt || '').length,
-    coverUrl: uif.meta.coverUrl || '',
-    bgUrl: uif.meta.bgUrl || '',
-    htmlLandingPage: uif.landingPage || '',
+    uid: uid,
+    title: uifData.meta ? (uifData.meta.title || '未命名剧本') : (uif.title || '未命名剧本'),
+    summary: uifData.meta ? (uifData.meta.summary || '').slice(0, 200) : (uif.summary || ''),
+    tags: uifData.meta ? (uifData.meta.tags || []) : (uif.tags || []),
+    orientation: uifData.meta ? (uifData.meta.orientation || '') : '',
+    sourceFormat: uif._sourceFormat || uif.sourceFormat || '',
+    worldBookCount: (uifData.worldBook || []).length,
+    promptLength: (uifData.prompts ? (uifData.prompts.mainPrompt || '').length : 0),
+    coverUrl: uifData.meta ? (uifData.meta.coverUrl || '') : '',
+    bgUrl: uifData.meta ? (uifData.meta.bgUrl || '') : '',
+    htmlLandingPage: landingPage,
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    uif: uif,
+    uif: uifData,
   };
+
+  // 先查 uid 是否已存在 → 存在则更新，不存在则新增
+  var existing = await dbFindByUid(uid);
+  if (existing) {
+    // 保留原有 id，更新其他字段
+    entry.id = existing.id;
+    entry.createdAt = existing.createdAt;
+    return new Promise((resolve, reject) => {
+      const req = store.put(entry);
+      req.onsuccess = () => { tx.commit(); resolve(entry.id); };
+      req.onerror = e => reject(e.target.error);
+    });
+  }
+
   return new Promise((resolve, reject) => {
     const req = store.add(entry);
     req.onsuccess = () => { tx.commit(); resolve(req.result); };
