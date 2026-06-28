@@ -2367,7 +2367,7 @@ async function generateLandingPage(scriptId) {
     return;
   }
 
-  // 先获取剧本数据，提取主角建议
+  // 获取剧本数据
   var entry = await dbGet(scriptId);
   if (!entry || !entry.uif) {
     setStatus('❌ 剧本数据不存在', 'err');
@@ -2379,27 +2379,8 @@ async function generateLandingPage(scriptId) {
   var prompts = uif.prompts || {};
   var mainPrompt = prompts.mainPrompt || '';
 
-  // 从 mainPrompt 前 200 字智能提取主角线索
-  var protagonistHint = '';
-  var mpStart = mainPrompt.slice(0, 200);
-  // 常见主角描述模式："你扮演..."、"你是..."、"你叫..."、"玩家扮演..."
-  var match = mpStart.match(/(你[扮演是将叫担任]?[^。\n]{5,60})/);
-  if (match) {
-    protagonistHint = match[1];
-  } else {
-    // 取前 40 字作为上下文线索
-    protagonistHint = mpStart.slice(0, 40).replace(/[「」【】""]/g, '').trim();
-  }
-  if (!protagonistHint) {
-    protagonistHint = meta.title || '剧本主角';
-  }
-
-  // 弹出主角确认 dialog
-  var protagonist = await askProtagonist(protagonistHint);
-  if (protagonist === null) {
-    // 用户关闭 dialog → 取消操作
-    return;
-  }
+  // 直接从 meta.protagonist 读取已确认的主角（Step 2 时已定下）
+  var protagonist = meta.protagonist || '';
 
   withLoading('btnGenHtml', '✨ AI 正在铸造专属主题宣发页', async function() {
     var worldBook = uif.worldBook || [];
@@ -2417,7 +2398,7 @@ async function generateLandingPage(scriptId) {
     // 构建用户消息：剧本背景信息 + 主角身份
     var userMsg = '剧本标题：' + title + '\n' +
       '剧本标签：' + tags + '\n' +
-      '玩家扮演角色：' + protagonist + '\n' +
+      (protagonist ? '玩家扮演角色：' + protagonist + '\n' : '') +
       '背景简介：' + summary + '\n' +
       '详细设定：' + description + '\n' +
       '核心法则：' + worldview + '\n' +
