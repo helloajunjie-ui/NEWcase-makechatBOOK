@@ -1742,6 +1742,175 @@ $('btn-test-ai').addEventListener('click', async () => {
   }
 });
 
+
+// ═══════════════════════════════════════
+//  17. 捏人工坊 · AI 人物生成器
+// ═══════════════════════════════════════
+
+// 一句话描述 → AI 生成完整人物档案
+// 输出结构化 JSON：姓名/年龄/性别/外貌/身份/身世/性格/能力/口头禅/背景故事
+const PROMPT_CHAR_CREATOR = '你是一个专业的角色设定专家。根据用户提供的一句话人物描述，生成一个完整、立体、有深度的人物档案。\n\n' +
+  '请严格按照以下 JSON 格式输出，不要包含任何其他文字或 markdown 代码块标记：\n' +
+  '{\n' +
+  '  "name": "角色姓名",\n' +
+  '  "age": "年龄（如：28岁 / 外表看起来约20岁，实际已活了三百年）",\n' +
+  '  "gender": "性别",\n' +
+  '  "badge": "一句话标签（如：废土独眼机械师 / 仙界落魄散修）",\n' +
+  '  "appearance": "外貌详情（100-200字，包含体型、面容、穿着、标志性特征）",\n' +
+  '  "identity": "身份与职业",\n' +
+  '  "background": "身世背景（150-300字，包含出身、关键经历、转折点）",\n' +
+  '  "personality": "性格特征（50-100字，包含核心性格、矛盾点、习惯）",\n' +
+  '  "ability": "能力与特长（50-100字）",\n' +
+  '  "catchphrase": "经典口头禅或座右铭",\n' +
+  '  "story": "一段简短的背景故事或高光时刻（100-200字）"\n' +
+  '}\n\n' +
+  '要求：人物要有血有肉，有矛盾感和成长弧光，避免脸谱化。外貌、身世、性格要相互呼应。';
+
+async function generateCharacter() {
+  var seedInput = $('char-seed-input');
+  var seed = seedInput.value.trim();
+  if (!seed) {
+    setStatus('⚠️ 请先输入人物描述', 'err');
+    return;
+  }
+
+  // 检查 AI 配置
+  var aiCfg = loadAIConfig();
+  if (!aiCfg || !aiCfg.endpoint || !aiCfg.key) {
+    setStatus('⚠️ 请先在右上角 [🤖 AI 配置] 中设置 API 端点和 Key', 'err');
+    return;
+  }
+
+  await withLoading('btn-gen-character', '🎨 AI 正在捏人', async function() {
+    var response = await callAI(PROMPT_CHAR_CREATOR, seed, true);
+
+    // 如果返回的是字符串（JSON 解析失败），尝试提取 JSON
+    var charData;
+    if (typeof response === 'string') {
+      var jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try { charData = JSON.parse(jsonMatch[0]); } catch(e) { charData = null; }
+      } else {
+        charData = null;
+      }
+    } else {
+      charData = response;
+    }
+
+    if (!charData || !charData.name) {
+      throw new Error('AI 返回的人物数据不完整，请重试');
+    }
+
+    // 渲染人物卡片
+    renderCharacterCard(charData);
+
+    // 隐藏空状态，显示结果区
+    $('char-empty-state').style.display = 'none';
+    $('char-result-area').style.display = 'block';
+
+    setStatus('🎉 人物「' + charData.name + '」已生成', 'ok');
+  });
+}
+
+function renderCharacterCard(data) {
+  $('char-name').textContent = data.name || '—';
+  $('char-badge').textContent = data.badge || data.gender || '—';
+
+  var sections = [
+    { title: '📋 基本信息', items: [
+      { label: '年龄', value: data.age },
+      { label: '性别', value: data.gender },
+      { label: '身份', value: data.identity },
+    ]},
+    { title: '👤 外貌详情', text: data.appearance },
+    { title: '📜 身世背景', text: data.background },
+    { title: '💭 性格特征', text: data.personality },
+    { title: '⚡ 能力特长', text: data.ability },
+    { title: '💬 口头禅', text: data.catchphrase },
+    { title: '🌟 背景故事', text: data.story },
+  ];
+
+  var html = '';
+  sections.forEach(function(s) {
+    html += '<div class="char-section">';
+    html += '<div class="char-section-title">' + s.title + '</div>';
+    if (s.items) {
+      s.items.forEach(function(item) {
+        if (item.value) {
+          html += '<p><strong>' + item.label + '：</strong>' + escapeHtml(item.value) + '</p>';
+        }
+      });
+    }
+    if (s.text) {
+      html += '<p>' + escapeHtml(s.text) + '</p>';
+    }
+    html += '</div>';
+  });
+
+  $('char-card-body').innerHTML = html;
+
+  // 存储当前人物数据供复制使用
+  window._currentCharData = data;
+}
+
+function copyCharacterProfile() {
+  var data = window._currentCharData;
+  if (!data) {
+    setStatus('⚠️ 没有可复制的人物档案', 'err');
+    return;
+  }
+
+  var SEP = '════════════════════════════════';
+  var text = SEP + '\n' +
+    '          🧑 人物档案\n' +
+    SEP + '\n\n' +
+    '【姓名】' + (data.name || '—') + '\n' +
+    '【年龄】' + (data.age || '—') + '\n' +
+    '【性别】' + (data.gender || '—') + '\n' +
+    '【身份】' + (data.identity || '—') + '\n' +
+    '【标签】' + (data.badge || '—') + '\n\n' +
+    '─── 外貌详情 ───\n' + (data.appearance || '—') + '\n\n' +
+    '─── 身世背景 ───\n' + (data.background || '—') + '\n\n' +
+    '─── 性格特征 ───\n' + (data.personality || '—') + '\n\n' +
+    '─── 能力特长 ───\n' + (data.ability || '—') + '\n\n' +
+    '─── 口头禅 ───\n' + (data.catchphrase || '—') + '\n\n' +
+    '─── 背景故事 ───\n' + (data.story || '—') + '\n\n' +
+    SEP + '\n' +
+    '由「尼可剧本工具 · 捏人工坊」生成';
+
+  navigator.clipboard.writeText(text).then(function() {
+    setStatus('📋 人物档案已复制到剪贴板', 'ok');
+  }).catch(function() {
+    // fallback
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    setStatus('📋 人物档案已复制到剪贴板', 'ok');
+  });
+}
+
+// ── 捏人工坊事件绑定 ──
+$('btn-gen-character').addEventListener('click', generateCharacter);
+$('btn-copy-char').addEventListener('click', copyCharacterProfile);
+$('btn-regenerate-char').addEventListener('click', generateCharacter);
+
+// 回车触发生成
+$('char-seed-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    generateCharacter();
+  }
+});
+
+// 捏人视图切换
+$('nav-char-creator').addEventListener('click', function() {
+  switchView('char-creator');
+});
+
+
 // ═══════════════════════════════════════
 //  17. AI 铸造专属主题宣发页 (Generative UI Engine)
 // ═══════════════════════════════════════
