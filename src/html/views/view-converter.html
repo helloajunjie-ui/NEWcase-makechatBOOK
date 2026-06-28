@@ -1,0 +1,56 @@
+<main id="view-converter" class="app-view active">
+  <div class="panel">
+    <div class="panel-header">
+      📜 输入
+      <span class="count" id="inputCount"></span>
+    </div>
+    <div class="panel-body">
+      <div class="batch-toggle">
+        <input type="checkbox" id="batchMode">
+        <label for="batchMode">批量模式</label>
+        <span class="badge-batch">BETA</span>
+      </div>
+
+      <div class="upload-zone" id="uploadZone">
+        <div class="icon">📫</div>
+        <div class="hint">
+          拖拽 JSON 文件到此处，或 <label for="fileInput">点击选择文件</label>
+          <span id="batchHint" style="display:none">（可多选）</span>
+        </div>
+        <input type="file" id="fileInput" accept=".json" multiple>
+      </div>
+
+      <div id="batchFileList" class="batch-file-list" style="display:none"></div>
+
+      <div id="batchActions" class="batch-actions" style="display:none">
+        <button class="btn btn-success" id="btnBatchDownloadAll">📝 全部下载</button>
+        <button class="btn btn-danger" id="btnBatchClear">🗑 清空列表</button>
+      </div>
+
+      <textarea id="jsonInput" placeholder="或直接粘贴 JSON 内容到这里..." spellcheck="false"></textarea>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      📛 输出
+      <span class="count" id="outputCount"></span>
+    </div>
+    <div class="panel-body">
+      <div class="output-actions">
+        <div class="format-selector" id="formatSelector">
+          <button class="format-opt active" data-format="markdown">📑 Markdown</button>
+          <button class="format-opt" data-format="chunchao">🌠 春潮</button>
+          <button class="format-opt" data-format="fengyue">🎲 风月</button>
+          <button class="format-opt" data-format="miss">🎵 MISS</button>
+        </div>
+      </div>
+      <div class="output-actions">
+        <button class="btn btn-success" id="btnCopy">📵 复制</button>
+        <button class="btn btn-primary" id="btnDownload">⬇ 下载</button>
+        <button class="btn btn-secondary" id="btnFormat">✨ 格式化</button>
+      </div>
+      <textarea id="outputArea" placeholder="解析成功后，此处显示转换结果..." spellcheck="false" readonly></textarea>
+    </div>
+  </div>
+</main>

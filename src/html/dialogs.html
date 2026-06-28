@@ -1,0 +1,83 @@
+<!-- AI 配置弹窗 -->
+<dialog id="ai-config-dialog" class="ai-dialog">
+  <div class="ai-dialog-header">
+    <span>🤖 AI 配置</span>
+    <button id="btn-close-ai-config" class="icon-btn" title="关闭">✕</button>
+  </div>
+  <div class="ai-dialog-body">
+    <!-- 模式切换 Tab -->
+    <div class="ai-mode-tabs">
+      <button class="ai-mode-tab active" data-mode="deepseek">🔴 DeepSeek</button>
+      <button class="ai-mode-tab" data-mode="relay">🔄 中转站</button>
+    </div>
+
+    <!-- DeepSeek 模式 -->
+    <div id="ai-config-deepseek" class="ai-mode-panel active">
+      <div class="ai-config-field">
+        <label for="ai-endpoint-ds">API 端点</label>
+        <input type="url" id="ai-endpoint-ds" placeholder="https://api.deepseek.com/v1/chat/completions" />
+      </div>
+      <div class="ai-config-field">
+        <label for="ai-model-ds">模型</label>
+        <input type="text" id="ai-model-ds" placeholder="deepseek-chat" />
+      </div>
+      <div class="ai-config-field">
+        <label for="ai-key-ds">API Key</label>
+        <input type="password" id="ai-key-ds" placeholder="sk-..." />
+      </div>
+      <div class="ai-config-hint">
+        <p>💡 DeepSeek 原生模式，直连 DeepSeek API。</p>
+        <p>Key 仅存储在浏览器 localStorage 中。</p>
+      </div>
+    </div>
+
+    <!-- 中转站模式 -->
+    <div id="ai-config-relay" class="ai-mode-panel">
+      <div class="ai-config-field">
+        <label for="ai-endpoint-relay">API 端点</label>
+        <input type="url" id="ai-endpoint-relay" placeholder="https://api.yuegle.com/v1/chat/completions" />
+      </div>
+      <div class="ai-config-field">
+        <label for="ai-key-relay">API Key</label>
+        <input type="password" id="ai-key-relay" placeholder="yk-..." />
+      </div>
+      <div class="ai-config-field">
+        <label for="ai-model-relay">模型</label>
+        <div class="ai-model-select-row">
+          <select id="ai-model-relay" class="ai-model-select">
+            <option value="">— 请先填入 Key 并获取模型列表 —</option>
+          </select>
+          <button id="btn-fetch-models" class="btn btn-secondary btn-sm">🔄 获取模型</button>
+        </div>
+      </div>
+      <div class="ai-config-hint">
+        <p>💡 中转站模式，兼容任何 OpenAI 格式的中转 API。</p>
+        <p>👉 <a href="https://api.yuegle.com/register?aff=vJYB" target="_blank" style="color:var(--accent)">申请 Yuegle API 中转站</a></p>
+        <p>Key 仅存储在浏览器 localStorage 中。</p>
+      </div>
+    </div>
+  </div>
+  <div class="ai-dialog-footer">
+    <button id="btn-test-ai" class="btn btn-secondary">🔌 测试连接</button>
+    <button id="btn-save-ai-config" class="btn btn-primary">💾 保存配置</button>
+  </div>
+</dialog>
+
+<!-- 主角身份确认弹窗 -->
+<dialog id="protagonist-dialog" class="ai-dialog">
+  <div class="ai-dialog-header">
+    <span>🎭 确认主角身份</span>
+    <button id="btn-close-protagonist" class="icon-btn" title="关闭">✕</button>
+  </div>
+  <div class="ai-dialog-body">
+    <p style="margin:0 0 12px 0;color:var(--text-secondary);font-size:13px">AI 需要知道玩家在本剧本中扮演谁，才能生成精准的宣发页。请确认或修改主角身份：</p>
+    <div class="ai-config-field">
+      <label for="protagonist-input">主角身份描述</label>
+      <textarea id="protagonist-input" rows="3" placeholder="例：穿越到异世界的普通上班族，意外获得系统..." style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-secondary);color:var(--text-primary);resize:vertical;font-size:13px;line-height:1.5;font-family:inherit;box-sizing:border-box"></textarea>
+    </div>
+  </div>
+  <div class="ai-dialog-footer">
+    <button id="btn-skip-protagonist" class="btn btn-secondary">⏭ 让 AI 自行判断</button>
+    <button id="btn-confirm-protagonist" class="btn btn-primary">✅ 确认，开始铸造</button>
+  </div>
+</dialog>

@@ -1,0 +1,134 @@
+<main id="view-generator" class="app-view">
+  <div class="generator-workspace">
+    <!-- 顶部步进器 -->
+    <div class="wizard-stepper">
+      <div class="step active" data-step="1">
+        <span class="step-num">1</span>
+        <span class="step-label">灵感抽卡</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step" data-step="2">
+        <span class="step-num">2</span>
+        <span class="step-label">设定调优</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step" data-step="3">
+        <span class="step-num">3</span>
+        <span class="step-label">提示词生成</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step" data-step="4">
+        <span class="step-num">4</span>
+        <span class="step-label">世界书 & 宣发</span>
+      </div>
+    </div>
+
+    <!-- 步骤 1：灵感抽卡 -->
+    <section id="gen-step-1" class="gen-step-content active">
+      <div class="seed-input-area">
+        <label class="seed-label">输入一句话灵感</label>
+        <textarea id="gen-seed-input" class="seed-textarea" placeholder="废土赛博朋克，主角是个只能活三天的赏金猎人..." spellcheck="false"></textarea>
+        <button id="btn-gen-cards" class="btn btn-primary btn-lg">🎲 生成 4 个方向</button>
+      </div>
+      <div id="gen-cards-container" class="cards-grid">
+        <div class="cards-placeholder">点击上方按钮，AI 将为你生成 4 个剧本方向</div>
+      </div>
+    </section>
+
+    <!-- 步骤 2：设定调优 + 素材导入 + 主角确认 -->
+    <section id="gen-step-2" class="gen-step-content" style="display:none">
+      <div class="refine-area">
+        <div class="refine-header">
+          <h3>📌 已选方向</h3>
+          <button id="btn-back-to-step1" class="btn btn-secondary btn-sm">← 返回重选</button>
+        </div>
+        <div id="gen-selected-card" class="selected-card-preview"></div>
+
+        <!-- 素材导入区：从捏人/世界观/体系导入 -->
+        <div class="refine-section">
+          <div class="refine-section-header" style="cursor:pointer" id="toggle-materials">
+            <span>📦 导入已有素材</span>
+            <span class="refine-toggle-icon">▼</span>
+          </div>
+          <div id="gen-materials-area" class="refine-section-body">
+            <div class="material-hint">从以下工具生成的素材可直接导入作为剧本上下文：</div>
+            <div class="material-buttons">
+              <button id="btn-import-char" class="btn btn-sm btn-secondary">🧑 导入捏人</button>
+              <button id="btn-import-world" class="btn btn-sm btn-secondary">🌍 导入世界观</button>
+              <button id="btn-import-power" class="btn btn-sm btn-secondary">⚡ 导入体系</button>
+            </div>
+            <div id="gen-imported-materials" class="imported-materials"></div>
+          </div>
+        </div>
+
+        <!-- 主角确认 -->
+        <div class="refine-section">
+          <div class="refine-section-header">
+            <span>🎭 玩家扮演角色</span>
+          </div>
+          <div class="refine-section-body">
+            <input type="text" id="gen-protagonist-input" class="refine-input" placeholder="例：穿越到异世界的普通上班族，意外获得系统..." />
+            <div class="refine-hint">AI 将以此角色为中心生成提示词和宣发页</div>
+          </div>
+        </div>
+
+        <div class="refine-edit-area">
+          <label class="seed-label">调优指令（可选）</label>
+          <textarea id="gen-refine-input" class="seed-textarea" placeholder="把主角改成反派 / 增加克苏鲁元素..." spellcheck="false"></textarea>
+          <div class="refine-actions">
+            <button id="btn-refine-ai" class="btn btn-secondary">🔄 AI 调优</button>
+            <button id="btn-to-step-3" class="btn btn-primary">✨ 方向确认，生成提示词</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 步骤 3：提示词生成 -->
+    <section id="gen-step-3" class="gen-step-content" style="display:none">
+      <div class="prompt-gen-area">
+        <div class="refine-header">
+          <h3>📝 系统提示词</h3>
+          <button id="btn-back-to-step2" class="btn btn-secondary btn-sm">← 返回调优</button>
+        </div>
+        <textarea id="gen-prompt-output" class="prompt-output" readonly spellcheck="false"></textarea>
+        <div class="prompt-actions">
+          <button id="btn-copy-prompt" class="btn btn-secondary">📋 复制</button>
+          <button id="btn-regenerate-prompt" class="btn btn-secondary">🔄 重新生成</button>
+          <button id="btn-to-step-4" class="btn btn-primary">📖 萃取世界书</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 步骤 4：世界书萃取 + 迭代 + 宣发页 -->
+    <section id="gen-step-4" class="gen-step-content" style="display:none">
+      <div class="wb-gen-area">
+        <div class="refine-header">
+          <h3>📚 世界书条目</h3>
+          <button id="btn-back-to-step3" class="btn btn-secondary btn-sm">← 返回提示词</button>
+        </div>
+        <div id="gen-wb-list" class="gen-wb-list">
+          <div class="cards-placeholder">正在萃取世界书...</div>
+        </div>
+
+        <!-- 世界书迭代：玩家可追加内容 -->
+        <div class="refine-section">
+          <div class="refine-section-header" style="cursor:pointer" id="toggle-wb-iterate">
+            <span>✏️ 追加世界书内容</span>
+            <span class="refine-toggle-icon">▼</span>
+          </div>
+          <div id="gen-wb-iterate-area" class="refine-section-body">
+            <div class="material-hint">告诉 AI 你想增加什么内容，如"增加几个关键人物""添加一个隐藏地点""补充一段历史背景"</div>
+            <textarea id="gen-wb-iterate-input" class="seed-textarea" placeholder="例：增加 3 个关键反派人物，每人有独特能力和动机..." spellcheck="false" rows="2"></textarea>
+            <button id="btn-iterate-wb" class="btn btn-secondary btn-sm">🚀 追加</button>
+          </div>
+        </div>
+
+        <div class="wb-gen-actions">
+          <button id="btn-regenerate-wb" class="btn btn-secondary">🔄 重新萃取</button>
+          <button id="btn-gen-html-from-wizard" class="btn btn-primary">🌐 生成宣发页</button>
+          <button id="btn-save-script" class="btn btn-success btn-lg">💾 保存剧本到本地</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>

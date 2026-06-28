@@ -3719,4 +3719,4 @@ function initSakuraBg(){
 }
 
 // 启动樱花背景
-initSakuraBg();
+initSakuraBg()

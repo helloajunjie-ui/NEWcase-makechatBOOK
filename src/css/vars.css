@@ -1,0 +1,98 @@
+/* ═══════════════════════════════════════
+   午夜酒馆 · 美学系统 v2
+   Dark Mode First · CSS Token 体系 · 磁性微交互
+   ═══════════════════════════════════════ */
+
+/* ── 樱花 WebGL 背景层 ── */
+#sakura-bg{
+  position:fixed;
+  top:0;left:0;
+  width:100vw;height:100vh;
+  z-index:-1;
+  pointer-events:none;
+  opacity:0.5;
+}
+
+/* ── Reset & Base ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+/* ── 默认：暗夜模式 (Midnight Theme) ── */
+:root{
+  --bg-body:#0f0f13;
+  --bg-panel:#18181c;
+  --bg-hover:#232329;
+  --bg-surface:#1e1e24;
+  --border-color:#2a2a32;
+  --border-light:#35353f;
+
+  --text-main:#e2e2e9;
+  --text-muted:#8b8b99;
+  --text-dim:#5c5c6a;
+
+  --accent-primary:#8b5cf6;
+  --accent-hover:#7c3aed;
+  --accent-glow:rgba(139,92,246,0.15);
+
+  --green:#4ade80;
+  --red:#f87171;
+  --amber:#fbbf24;
+
+  --btn-bg:#2a2a32;
+  --btn-text:#e2e2e9;
+
+  --radius:10px;
+  --radius-sm:6px;
+  --radius-lg:12px;
+  --font:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  --mono:'Cascadia Code','Fira Code','Consolas',monospace;
+  --shadow-sm:0 2px 8px rgba(0,0,0,0.4);
+  --shadow-md:0 8px 24px rgba(0,0,0,0.6);
+  --transition:200ms cubic-bezier(.4,0,.2,1);
+}
+
+/* ── 浅色模式覆盖 (Light Theme) ── */
+[data-theme="light"]{
+  --bg-body:#f4f4f5;
+  --bg-panel:#ffffff;
+  --bg-hover:#f1f5f9;
+  --bg-surface:#fafafa;
+  --border-color:#e4e4e7;
+  --border-light:#d4d4d8;
+
+  --text-main:#18181b;
+  --text-muted:#71717a;
+  --text-dim:#a1a1aa;
+
+  --accent-primary:#7c5cfc;
+  --accent-hover:#6d3fd9;
+  --accent-glow:rgba(124,92,252,0.12);
+
+  --btn-bg:#f4f4f5;
+  --btn-text:#18181b;
+
+  --shadow-sm:0 2px 8px rgba(0,0,0,0.05);
+  --shadow-md:0 8px 24px rgba(0,0,0,0.08);
+}
+
+/* ── 全局基础 ── */
+html,body{height:100%}
+body{
+  font-family:var(--font);
+  background:var(--bg-body);
+  color:var(--text-main);
+  display:flex;
+  flex-direction:column;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  height:100vh;
+  overflow:hidden;
+  transition:background-color 0.3s ease, color 0.3s ease;
+}
+a{color:var(--accent-primary);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-color);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text-dim)}

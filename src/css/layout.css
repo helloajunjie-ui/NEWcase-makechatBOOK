@@ -1,0 +1,125 @@
+/* ── App Header / 导航栏 ── */
+.app-header{
+  height:56px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 24px;
+  border-bottom:1px solid var(--border-color);
+  background:var(--bg-panel);
+  flex-shrink:0;
+  transition:background-color 0.3s ease, border-color 0.3s ease;
+}
+.app-header .logo{
+  font-size:16px;
+  font-weight:700;
+  color:var(--text-main);
+}
+.app-nav{
+  display:flex;
+  gap:4px;
+}
+.nav-btn{
+  padding:8px 18px;
+  border:none;
+  border-radius:var(--radius-sm);
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  transition:var(--transition);
+  font-family:var(--font);
+  background:transparent;
+  color:var(--text-muted);
+}
+.nav-btn:hover{
+  color:var(--text-main);
+  background:var(--bg-hover);
+}
+.nav-btn.active{
+  background:var(--accent-primary);
+  color:#fff;
+  box-shadow:0 2px 8px var(--accent-glow);
+}
+.nav-btn:active{transform:scale(.96)}
+
+/* ── App Views ── */
+.app-view{
+  display:none !important;
+  width:100%;
+  height:calc(100vh - 60px);
+  overflow:hidden;
+}
+
+/* ── 视图 1：转换器（左右分栏） ── */
+#view-converter.active{
+  display:flex !important;
+  flex-direction:row;
+}
+#view-converter .panel{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+#view-converter .panel+.panel{border-left:1px solid var(--border-color)}
+#view-converter .panel-header{
+  padding:14px 20px;
+  border-bottom:1px solid var(--border-color);
+  font-size:13px;
+  font-weight:600;
+  display:flex;align-items:center;gap:10px;
+  flex-shrink:0;
+  background:var(--bg-panel);
+  transition:background-color 0.3s ease, border-color 0.3s ease;
+}
+#view-converter .panel-header .count{
+  font-weight:400;
+  color:var(--text-muted);
+  font-size:12px;
+}
+#view-converter .panel-body{
+  flex:1;
+  overflow:auto;
+  padding:16px 20px;
+}
+
+/* ── Status Bar ── */
+#statusBar{
+  padding:10px 24px;
+  border-top:1px solid var(--border-color);
+  font-size:12px;
+  color:var(--text-muted);
+  display:flex;align-items:center;gap:8px;
+  flex-shrink:0;
+  background:var(--bg-panel);
+  transition:background-color 0.3s ease, border-color 0.3s ease;
+}
+#statusBar .dot{
+  width:8px;height:8px;
+  border-radius:50%;
+  display:inline-block;
+  transition:var(--transition);
+}
+#statusBar .dot.idle{background:var(--text-dim)}
+#statusBar .dot.ok{background:var(--green);box-shadow:0 0 6px rgba(74,222,128,.5)}
+#statusBar .dot.err{background:var(--red);box-shadow:0 0 6px rgba(248,113,113,.5)}
+#statusBar .dot.busy{background:var(--accent-primary);animation:pulse 1s infinite}
+#statusBar .status-author{
+  margin-left:auto;
+  font-size:11px;
+  color:var(--text-dim);
+  opacity:.65;
+  white-space:nowrap;
+  letter-spacing:.3px;
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  #view-converter.active{flex-direction:column}
+  #view-converter .panel+.panel{border-left:none;border-top:1px solid var(--border-color)}
+  .lib-sidebar{width:100%;border-right:none;border-bottom:1px solid var(--border-color)}
+  #view-library.active{flex-direction:column}
+  .app-header{padding:0 16px}
+  .app-header .logo{font-size:14px}
+}

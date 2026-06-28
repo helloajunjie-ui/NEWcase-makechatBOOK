@@ -1,7 +1,71 @@
+
 // ═══════════════════════════════════════
+//  1. 通用中间格式 (UIF) 定义
 // ═══════════════════════════════════════
+//
+// UIF 是所有平台格式的"唯一真相源"。
+// 解析器将各平台 JSON 映射到此结构，
+// 渲染器从此结构生成目标平台 JSON/Markdown。
+//
+// UIF 结构：
+// {
+//   meta: {
+//     title:        string,       // 剧本名称
+//     summary:      string,       // 简短摘要
+//     description:  string,       // HTML 详情页（完整）
+//     language:     string,       // 语言代码，如 "zh-Hans"
+//     orientation:  string,       // 取向：男性向/女性向/通用
+//     tags:         string[],     // 标签列表
+//     source:       string|null,  // 来源平台标识
+//     exportedAt:   string|null,  // 导出时间 ISO 8601
+//   },
+//   assets: {
+//     coverUrl:     string|null,  // 封面图 URL
+//     coverTinyUrl: string|null,  // 缩略封面 URL
+//     bgImageUrl:   string|null,  // 背景图 URL
+//     bgMobileUrl:  string|null,  // 移动端背景 URL
+//     coverAnimated:boolean,      // 封面是否为动图
+//   },
+//   prompts: {
+//     mainPrompt:   string,       // 核心系统提示词
+//     suffixPrompt: string,       // 后缀提示词
+//     postText:     string,       // 后置文本（风月用）
+//     identityStyle:string,       // AI 身份/风格提示（MISS 用）
+//     worldview:    string,       // 世界观提示（MISS 用）
+//     writingStyle: string,       // 写作风格提示（MISS 用）
+//   },
+//   worldBook: [                   // 世界书条目
+//     {
+//       id:           string,     // 唯一标识
+//       group:        string,     // 分组名
+//       keywords:     string[],   // 触发关键词
+//       content:      string,     // 词条内容
+//       enabled:      boolean,    // 是否启用
+//       probability:  number,     // 触发概率 0-100
+//       matchMode:    string,     // 匹配模式: any/all
+//       scanDepth:    number,     // 扫描深度
+//       sortOrder:    number,     // 排序
+//     }
+//   ],
+//   extras: {
+//     customCss:      string,     // 自定义 CSS
+//     quickCommands:  string[],   // 快捷指令
+//     gameStateEnabled:boolean,   // 游戏状态面板
+//     gameStateDesc:  string,
+//     gameStateExample:string,
+//     nextOptionsEnabled:boolean, // 下回合选项
+//     nextPlotPrompt: string,
+//     breakerText:    string,     // 分隔符文本
+//     useCustomBreaker:boolean,
+//     bannedWords:    string[],   // 屏蔽词
+//     suggestedQuestions:string[],
+//   }
+// }
+
 // ═══════════════════════════════════════
+//  2. 工具函数
 // ═══════════════════════════════════════
+
 function flexGet(obj, ...keys) {
   if (!obj || typeof obj !== 'object') return undefined;
   for (const k of keys) {
@@ -9,24 +73,29 @@ function flexGet(obj, ...keys) {
   }
   return undefined;
 }
+
 function flexStr(obj, ...keys) {
   const v = flexGet(obj, ...keys);
   return v !== undefined ? String(v) : '';
 }
+
 function flexArr(obj, ...keys) {
   const v = flexGet(obj, ...keys);
   return Array.isArray(v) ? v : [];
 }
+
 function flexBool(obj, ...keys) {
   const v = flexGet(obj, ...keys);
   return v === true || v === 'true';
 }
+
 function flexNum(obj, fallback, ...keys) {
   const v = flexGet(obj, ...keys);
   if (v === undefined || v === null) return fallback;
   const n = Number(v);
   return isNaN(n) ? fallback : n;
 }
+
 function findWorldBook(obj) {
   if (!obj || typeof obj !== 'object') return [];
   for (const key of ['worldBookEntries', 'world_book', 'worldBook', 'entries', 'worldBookEntry']) {
@@ -41,6 +110,7 @@ function findWorldBook(obj) {
   }
   return [];
 }
+
 function findMainPrompt(obj) {
   if (!obj || typeof obj !== 'object') return '';
   for (const key of ['mainPrompt', 'pre_prompt', 'systemPrompt', 'main_prompt', 'prompt']) {
@@ -57,6 +127,7 @@ function findMainPrompt(obj) {
   }
   return '';
 }
+
 function findSuffixPrompt(obj) {
   if (!obj || typeof obj !== 'object') return '';
   for (const key of ['suffixPrompt', 'postPrompt', 'post_prompt', 'postPromptText']) {
@@ -72,10 +143,12 @@ function findSuffixPrompt(obj) {
   }
   return '';
 }
+
 function findPostText(obj) {
   if (!obj || typeof obj !== 'object') return '';
   return flexStr(obj, 'post_text', 'postText', 'posttext');
 }
+
 function findCustomCss(obj) {
   if (!obj || typeof obj !== 'object') return '';
   for (const key of ['customCss', 'customCSS', 'builtInCss', 'built_in_css', 'custom_css', 'css']) {
@@ -87,6 +160,7 @@ function findCustomCss(obj) {
   }
   return '';
 }
+
 function findCoverUrl(obj) {
   if (!obj || typeof obj !== 'object') return null;
   for (const key of ['coverUrl', 'cover', 'cover_url', 'coverImage', 'cover_image']) {
@@ -99,6 +173,7 @@ function findCoverUrl(obj) {
   }
   return null;
 }
+
 function findBgUrl(obj) {
   if (!obj || typeof obj !== 'object') return null;
   for (const key of ['bgImageUrl', 'bg_image', 'bgImage', 'backgroundImage', 'bg_url']) {
@@ -111,6 +186,7 @@ function findBgUrl(obj) {
   }
   return null;
 }
+
 function findTags(obj) {
   if (!obj || typeof obj !== 'object') return [];
   for (const key of ['tags', 'tagIds', 'tag_ids', 'categories', 'categoryIds']) {
@@ -138,6 +214,7 @@ function findTags(obj) {
   }
   return [];
 }
+
 function findOrientation(obj) {
   if (!obj || typeof obj !== 'object') return '';
   for (const key of ['orientation', 'genderOrientation', 'gender_orientation']) {
@@ -152,14 +229,17 @@ function findOrientation(obj) {
   }
   return '';
 }
+
 function findExportedAt(obj) {
   if (!obj || typeof obj !== 'object') return null;
   return flexGet(obj, 'exportedAt', 'exported_at', 'exportTime', 'export_time', 'createdAt', 'createTime');
 }
+
 function findLanguage(obj) {
   if (!obj || typeof obj !== 'object') return 'zh-Hans';
   return flexStr(obj, 'language', 'lang', 'locale');
 }
+
 function findQuickCommands(obj) {
   if (!obj || typeof obj !== 'object') return [];
   for (const key of ['quickCommands', 'shortcut_commands', 'shortcutCommands', 'commands']) {
@@ -171,16 +251,21 @@ function findQuickCommands(obj) {
   }
   return [];
 }
+
 function findBannedWords(obj) {
   if (!obj || typeof obj !== 'object') return [];
   return flexArr(obj, 'banned_words', 'bannedWords', 'blockedWords', 'blocked_words', 'blacklist');
 }
+
 function findSuggestedQuestions(obj) {
   if (!obj || typeof obj !== 'object') return [];
   return flexArr(obj, 'suggested_questions', 'suggestedQuestions', 'starterQuestions', 'questions');
 }
+
 // ═══════════════════════════════════════
+//  3. 格式检测
 // ═══════════════════════════════════════
+
 function detectFormat(raw) {
   if (!raw || typeof raw !== 'object') return null;
   if (raw.work && typeof raw.work === 'object' && raw.work.title) return 'chunchao';
@@ -190,8 +275,11 @@ function detectFormat(raw) {
   if (raw.name && raw.description && raw.tags) return 'fengyue';
   return null;
 }
+
 // ═══════════════════════════════════════
+//  4. 解析器
 // ═══════════════════════════════════════
+
 function parseChunchao(raw) {
   const w = raw.work || raw;
   // 从 detailIntro/description 提取 HTML 网页（如果存在）
@@ -247,6 +335,7 @@ function parseChunchao(raw) {
     },
   };
 }
+
 function parseFengyue(raw) {
   return {
     meta: {
@@ -291,6 +380,7 @@ function parseFengyue(raw) {
     },
   };
 }
+
 function parseMiss(raw) {
   const pd = raw.promptData || {};
   // 从 description/detailIntro 提取 HTML 网页（如果存在）
@@ -346,8 +436,11 @@ function parseMiss(raw) {
     },
   };
 }
+
 // ═══════════════════════════════════════
+//  5. 世界书条目解析（平台无关）
 // ═══════════════════════════════════════
+
 function parseWorldBookEntries(entries, sourceFormat) {
   if (!Array.isArray(entries)) return [];
   return entries.map((e, i) => {
@@ -358,8 +451,30 @@ function parseWorldBookEntries(entries, sourceFormat) {
     } else if (typeof rawKey === 'string') {
       keywords = rawKey.split(/@wb@/).map(s => s.replace(/^_or_/, '').replace(/^_and_/, '')).filter(Boolean);
     }
+    const group = flexStr(e, 'groupName', 'group', 'group_name', 'category');
+    const content = flexStr(e, 'content', 'value', 'text', 'description', 'desc');
+    let matchMode = 'any';
+    const rawMode = flexGet(e, 'matchMode', 'match_mode', 'matchType', 'match_type');
+    if (rawMode === 'all' || rawMode === 1 || rawMode === true || rawMode === '1') matchMode = 'all';
+    if (e.and === true) matchMode = 'all';
+    return {
+      id: 'wb_' + i,
+      group: group || '默认',
+      keywords: keywords,
+      content: content,
+      enabled: e.enabled !== false && e.enable !== false,
+      probability: flexNum(e, 100, 'probability', 'prob', 'chance'),
+      matchMode: matchMode,
+      scanDepth: flexNum(e, 8, 'scanDepth', 'scan_depth', 'depth', 'key_region', 'scanRegions'),
+      sortOrder: flexNum(e, i, 'sortOrder', 'sort_order', 'sort', 'order', 'ord'),
+    };
+  });
+}
+
 // ═══════════════════════════════════════
+//  6. 主解析入口
 // ═══════════════════════════════════════
+
 function parseJSON(raw) {
   const fmt = detectFormat(raw);
   if (!fmt) throw new Error('无法识别的剧本格式，请确认 JSON 结构是否正确');
@@ -374,8 +489,11 @@ function parseJSON(raw) {
   uif._raw = raw;
   return uif;
 }
+
 // ═══════════════════════════════════════
+//  7. 渲染器
 // ═══════════════════════════════════════
+
 function renderMarkdown(uif) {
   const { meta, assets, prompts, worldBook, extras } = uif;
   let md = '# ' + meta.title + '\n\n';
@@ -405,6 +523,7 @@ function renderMarkdown(uif) {
   }
   return md;
 }
+
 function renderChunchao(uif) {
   const { meta, assets, prompts, worldBook, extras } = uif;
   return JSON.stringify({
@@ -430,6 +549,7 @@ function renderChunchao(uif) {
     },
   }, null, 2);
 }
+
 function renderFengyue(uif) {
   const { meta, assets, prompts, worldBook, extras } = uif;
   return JSON.stringify({
@@ -455,6 +575,7 @@ function renderFengyue(uif) {
     tags: meta.tags.map(t => ({ name: t, __isNew: true })),
   }, null, 2);
 }
+
 function renderMiss(uif) {
   const { meta, prompts, worldBook, extras } = uif;
   return JSON.stringify({
@@ -476,37 +597,192 @@ function renderMiss(uif) {
     })),
   }, null, 2);
 }
+
 // ═══════════════════════════════════════
+//  8. IndexedDB 剧本库
 // ═══════════════════════════════════════
+
+const DB_NAME = 'ScriptLibrary';
+const DB_VER = 2;
+const STORE_NAME = 'scripts';
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+        store.createIndex('title', 'title', { unique: false });
+        store.createIndex('sourceFormat', 'sourceFormat', { unique: false });
+        store.createIndex('createdAt', 'createdAt', { unique: false });
+        store.createIndex('uid', 'uid', { unique: true });
+      } else {
+        // 版本升级：为已有 store 添加 uid 索引
+        if (!e.target.transaction.objectStore(STORE_NAME).indexNames.contains('uid')) {
+          e.target.transaction.objectStore(STORE_NAME).createIndex('uid', 'uid', { unique: true });
+        }
+      }
+    };
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+// 基于剧本元数据生成确定性 UID（12 位十六进制）
+function generateUid(uifData) {
+  var seed = (uifData.meta ? uifData.meta.title : uifData.title || '') + '|' +
+    (uifData._sourceFormat || uifData.sourceFormat || '') + '|' +
+    (uifData.meta ? uifData.meta.exportedAt : '');
+  // 简单哈希：crc32 风格，保证确定性
+  var hash = 0;
+  for (var i = 0; i < seed.length; i++) {
+    var ch = seed.charCodeAt(i);
+    hash = ((hash << 5) - hash) + ch;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  // 转 12 位十六进制，补零
+  return 'u' + (Math.abs(hash) % 0xFFFFFFFF).toString(16).padStart(8, '0') + '_' + Date.now().toString(36).slice(-3);
+}
+
+// 通过 uid 查找已有条目
+async function dbFindByUid(uid) {
+  if (!uid) return null;
+  const db = await openDB();
+  const tx = db.transaction(STORE_NAME, 'readonly');
+  const store = tx.objectStore(STORE_NAME);
+  const index = store.index('uid');
+  return new Promise((resolve, reject) => {
+    const req = index.get(uid);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+async function dbAdd(uif) {
+  const db = await openDB();
+  const tx = db.transaction(STORE_NAME, 'readwrite');
+  const store = tx.objectStore(STORE_NAME);
+  // 兼容两种调用方式：
+  // 1. dbAdd(uifObject) — 解析器导入时，uif.landingPage 存 HTML
+  // 2. dbAdd(dbEntry) — 向导保存时，dbEntry.uif 是 script 对象，dbEntry.htmlLandingPage 已设
+  var landingPage = uif.htmlLandingPage || (uif.uif && uif.uif.landingPage) || uif.landingPage || '';
+  var uifData = uif.uif || uif;  // 如果传的是 dbEntry，取内部的 uif
+  var uid = uif.uid || uifData.uid || generateUid(uifData);
+  const entry = {
+    uid: uid,
+    title: uifData.meta ? (uifData.meta.title || '未命名剧本') : (uif.title || '未命名剧本'),
+    summary: uifData.meta ? (uifData.meta.summary || '').slice(0, 200) : (uif.summary || ''),
+    tags: uifData.meta ? (uifData.meta.tags || []) : (uif.tags || []),
+    orientation: uifData.meta ? (uifData.meta.orientation || '') : '',
+    sourceFormat: uif._sourceFormat || uif.sourceFormat || '',
+    worldBookCount: (uifData.worldBook || []).length,
+    promptLength: (uifData.prompts ? (uifData.prompts.mainPrompt || '').length : 0),
+    coverUrl: uifData.meta ? (uifData.meta.coverUrl || '') : '',
+    bgUrl: uifData.meta ? (uifData.meta.bgUrl || '') : '',
+    htmlLandingPage: landingPage,
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    uif: uifData,
+  };
+
+  // 先查 uid 是否已存在 → 存在则更新，不存在则新增
+  var existing = await dbFindByUid(uid);
+  if (existing) {
+    // 保留原有 id，更新其他字段
+    entry.id = existing.id;
+    entry.createdAt = existing.createdAt;
+    return new Promise((resolve, reject) => {
+      const req = store.put(entry);
+      req.onsuccess = () => { tx.commit(); resolve(entry.id); };
+      req.onerror = e => reject(e.target.error);
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    const req = store.add(entry);
+    req.onsuccess = () => { tx.commit(); resolve(req.result); };
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+// 轻量列表查询：只取卡片渲染需要的字段，跳过 uif 大对象
+async function dbGetAll() {
+  const db = await openDB();
+  const tx = db.transaction(STORE_NAME, 'readonly');
+  const store = tx.objectStore(STORE_NAME);
+  return new Promise((resolve, reject) => {
+    const results = [];
+    const req = store.openCursor();
+    req.onsuccess = e => {
+      const cursor = e.target.result;
+      if (cursor) {
+        const v = cursor.value;
+        results.push({
+          id: v.id,
+          title: v.title,
+          summary: v.summary,
+          tags: v.tags,
+          sourceFormat: v.sourceFormat,
+          worldBookCount: v.worldBookCount,
+          promptLength: v.promptLength,
+          coverUrl: v.coverUrl,
+          createdAt: v.createdAt,
+        });
+        cursor.continue();
+      } else {
+        resolve(results);
+      }
+    };
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+async function dbGet(id) {
+  const db = await openDB();
+  const tx = db.transaction(STORE_NAME, 'readonly');
+  const store = tx.objectStore(STORE_NAME);
+  return new Promise((resolve, reject) => {
+    const req = store.get(id);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+async function dbUpdate(id, updates) {
+  const db = await openDB();
+  const tx = db.transaction(STORE_NAME, 'readwrite');
+  const store = tx.objectStore(STORE_NAME);
+  return new Promise((resolve, reject) => {
+    const getReq = store.get(id);
+    getReq.onsuccess = () => {
+      const entry = getReq.result;
+      if (!entry) { reject(new Error('条目不存在')); return; }
+      Object.assign(entry, updates, { updatedAt: Date.now() });
+      const putReq = store.put(entry);
+      putReq.onsuccess = () => { tx.commit(); resolve(); };
+      putReq.onerror = e => reject(e.target.error);
+    };
+    getReq.onerror = e => reject(e.target.error);
+  });
+}
+
+async function dbDelete(id) {
+  const db = await openDB();
+  const tx = db.transaction(STORE_NAME, 'readwrite');
+  const store = tx.objectStore(STORE_NAME);
+  return new Promise((resolve, reject) => {
+    const req = store.delete(id);
+    req.onsuccess = () => { tx.commit(); resolve(); };
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+async function dbSearch(query) {
+  const all = await dbGetAll();
+  if (!query.trim()) return all;
+  const q = query.toLowerCase();
+  return all.filter(e => e.title.toLowerCase().includes(q));
+}
+
 // ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════
-// ═══════════════════════════════════════

@@ -1,0 +1,31 @@
+<main id="view-power-builder" class="app-view">
+  <div class="char-creator-workspace">
+    <div class="char-creator-header">
+      <h2>⚡ 体系工坊</h2>
+      <p class="char-creator-subtitle">一句话描述力量体系/升级规则，AI 为你构建完整的体系框架</p>
+    </div>
+    <div class="char-input-area">
+      <textarea id="power-seed-input" class="seed-textarea" placeholder="例如：一个九阶修仙体系，每阶分初期/中期/后期/圆满，突破需要渡劫。或者：异能者从 D 级到 SSS 级的觉醒体系，每个等级解锁新能力..." spellcheck="false"></textarea>
+      <button id="btn-gen-power" class="btn btn-primary btn-lg">⚡ AI 构建体系</button>
+    </div>
+    <div id="power-result-area" class="char-result-area" style="display:none">
+      <div class="char-card" id="power-card">
+        <div class="char-card-header">
+          <span class="char-name" id="power-name">—</span>
+          <span class="char-badge" id="power-badge">—</span>
+        </div>
+        <div class="char-card-body" id="power-card-body">
+          <!-- AI 生成的体系框架渲染在这里 -->
+        </div>
+      </div>
+      <div class="char-actions">
+        <button id="btn-copy-power" class="btn btn-success">📋 复制体系</button>
+        <button id="btn-regenerate-power" class="btn btn-secondary">🔄 重新生成</button>
+      </div>
+    </div>
+    <div id="power-empty-state" class="char-empty-state">
+      <div class="char-empty-icon">⚡</div>
+      <p>输入体系设定，点击「AI 构建体系」开始创作</p>
+    </div>
+  </div>
+</main>

@@ -1,0 +1,31 @@
+<main id="view-world-builder" class="app-view">
+  <div class="char-creator-workspace">
+    <div class="char-creator-header">
+      <h2>🌍 世界观构建</h2>
+      <p class="char-creator-subtitle">一句话描述世界设定，AI 为你构建完整的世界观档案</p>
+    </div>
+    <div class="char-input-area">
+      <textarea id="world-seed-input" class="seed-textarea" placeholder="例如：一个灵气复苏的赛博朋克世界，科技与修仙并存，人类在巨型企业统治下挣扎求生..." spellcheck="false"></textarea>
+      <button id="btn-gen-world" class="btn btn-primary btn-lg">🌍 AI 构建世界观</button>
+    </div>
+    <div id="world-result-area" class="char-result-area" style="display:none">
+      <div class="char-card" id="world-card">
+        <div class="char-card-header">
+          <span class="char-name" id="world-name">—</span>
+          <span class="char-badge" id="world-badge">—</span>
+        </div>
+        <div class="char-card-body" id="world-card-body">
+          <!-- AI 生成的世界观渲染在这里 -->
+        </div>
+      </div>
+      <div class="char-actions">
+        <button id="btn-copy-world" class="btn btn-success">📋 复制世界观</button>
+        <button id="btn-regenerate-world" class="btn btn-secondary">🔄 重新生成</button>
+      </div>
+    </div>
+    <div id="world-empty-state" class="char-empty-state">
+      <div class="char-empty-icon">🌍</div>
+      <p>输入世界设定，点击「AI 构建世界观」开始创作</p>
+    </div>
+  </div>
+</main>

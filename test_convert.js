@@ -7,9 +7,20 @@
 const fs = require('fs');
 const path = require('path');
 
+// ── Mock document for Node.js 环境 ──
+if (typeof document === 'undefined') {
+  global.document = {
+    getElementById: function() { return null; },
+    querySelector: function() { return null; },
+    querySelectorAll: function() { return []; },
+    createElement: function(tag) { return { tagName: tag, style: {}, classList: { add: function(){}, remove: function(){}, toggle: function(){} }, appendChild: function(){}, addEventListener: function(){} }; },
+  };
+  global.window = { location: { href: '' }, localStorage: { getItem: function(){return null;}, setItem: function(){}, removeItem: function(){} }, addEventListener: function(){}, open: function(){} };
+  global.navigator = { clipboard: { writeText: function(){return Promise.resolve();} } };
+}
+
 // ── 从 src/main.js 加载核心函数 ──
 const coreCode = fs.readFileSync(path.join(__dirname, 'temp_core.js'), 'utf8');
-// 移除 export 相关（如果有）
 eval(coreCode);
 
 // ── 测试文件列表 ──

@@ -347,21 +347,56 @@
     <button id="btn-close-ai-config" class="icon-btn" title="关闭">✕</button>
   </div>
   <div class="ai-dialog-body">
-    <div class="ai-config-field">
-      <label for="ai-endpoint">API 端点</label>
-      <input type="url" id="ai-endpoint" placeholder="https://api.openai.com/v1/chat/completions" />
+    <!-- 模式切换 Tab -->
+    <div class="ai-mode-tabs">
+      <button class="ai-mode-tab active" data-mode="deepseek">🔴 DeepSeek</button>
+      <button class="ai-mode-tab" data-mode="relay">🔄 中转站</button>
     </div>
-    <div class="ai-config-field">
-      <label for="ai-model">模型</label>
-      <input type="text" id="ai-model" placeholder="gpt-4o / deepseek-chat / claude-3-haiku..." />
+
+    <!-- DeepSeek 模式 -->
+    <div id="ai-config-deepseek" class="ai-mode-panel active">
+      <div class="ai-config-field">
+        <label for="ai-endpoint-ds">API 端点</label>
+        <input type="url" id="ai-endpoint-ds" placeholder="https://api.deepseek.com/v1/chat/completions" />
+      </div>
+      <div class="ai-config-field">
+        <label for="ai-model-ds">模型</label>
+        <input type="text" id="ai-model-ds" placeholder="deepseek-chat" />
+      </div>
+      <div class="ai-config-field">
+        <label for="ai-key-ds">API Key</label>
+        <input type="password" id="ai-key-ds" placeholder="sk-..." />
+      </div>
+      <div class="ai-config-hint">
+        <p>💡 DeepSeek 原生模式，直连 DeepSeek API。</p>
+        <p>Key 仅存储在浏览器 localStorage 中。</p>
+      </div>
     </div>
-    <div class="ai-config-field">
-      <label for="ai-key">API Key</label>
-      <input type="password" id="ai-key" placeholder="sk-..." />
-    </div>
-    <div class="ai-config-hint">
-      <p>💡 支持任何兼容 OpenAI API 格式的端点。</p>
-      <p>Key 仅存储在浏览器 localStorage 中，不会上传到任何第三方。</p>
+
+    <!-- 中转站模式 -->
+    <div id="ai-config-relay" class="ai-mode-panel">
+      <div class="ai-config-field">
+        <label for="ai-endpoint-relay">API 端点</label>
+        <input type="url" id="ai-endpoint-relay" placeholder="https://api.yuegle.com/v1/chat/completions" />
+      </div>
+      <div class="ai-config-field">
+        <label for="ai-key-relay">API Key</label>
+        <input type="password" id="ai-key-relay" placeholder="yk-..." />
+      </div>
+      <div class="ai-config-field">
+        <label for="ai-model-relay">模型</label>
+        <div class="ai-model-select-row">
+          <select id="ai-model-relay" class="ai-model-select">
+            <option value="">— 请先填入 Key 并获取模型列表 —</option>
+          </select>
+          <button id="btn-fetch-models" class="btn btn-secondary btn-sm">🔄 获取模型</button>
+        </div>
+      </div>
+      <div class="ai-config-hint">
+        <p>💡 中转站模式，兼容任何 OpenAI 格式的中转 API。</p>
+        <p>👉 <a href="https://api.yuegle.com/register?aff=vJYB" target="_blank" style="color:var(--accent)">申请 Yuegle API 中转站</a></p>
+        <p>Key 仅存储在浏览器 localStorage 中。</p>
+      </div>
     </div>
   </div>
   <div class="ai-dialog-footer">
