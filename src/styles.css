@@ -815,6 +815,10 @@ a:hover{text-decoration:underline}
   display:flex !important;
   overflow-y:auto;
 }
+#view-power-builder.active{
+  display:flex !important;
+  overflow-y:auto;
+}
 #view-generator.active{
   display:flex !important;
 }

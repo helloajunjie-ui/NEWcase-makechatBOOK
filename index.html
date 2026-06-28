@@ -823,6 +823,10 @@ a:hover{text-decoration:underline}
   display:flex !important;
   overflow-y:auto;
 }
+#view-power-builder.active{
+  display:flex !important;
+  overflow-y:auto;
+}
 #view-generator.active{
   display:flex !important;
 }
@@ -1437,6 +1441,7 @@ a:hover{text-decoration:underline}
     <button id="nav-generator" class="nav-btn">✨ 剧本车间</button>
     <button id="nav-char-creator" class="nav-btn">🧑 捏人</button>
     <button id="nav-world-builder" class="nav-btn">🌍 世界观</button>
+    <button id="nav-power-builder" class="nav-btn">⚡ 体系</button>
     <button id="nav-library" class="nav-btn">📚 剧本库</button>
   </nav>
   <div class="header-actions">
@@ -1677,6 +1682,39 @@ a:hover{text-decoration:underline}
     <div id="world-empty-state" class="char-empty-state">
       <div class="char-empty-icon">🌍</div>
       <p>输入世界设定，点击「AI 构建世界观」开始创作</p>
+    </div>
+  </div>
+</main>
+
+<!-- 视图 7：体系工坊 -->
+<main id="view-power-builder" class="app-view">
+  <div class="char-creator-workspace">
+    <div class="char-creator-header">
+      <h2>⚡ 体系工坊</h2>
+      <p class="char-creator-subtitle">一句话描述力量体系/升级规则，AI 为你构建完整的体系框架</p>
+    </div>
+    <div class="char-input-area">
+      <textarea id="power-seed-input" class="seed-textarea" placeholder="例如：一个九阶修仙体系，每阶分初期/中期/后期/圆满，突破需要渡劫。或者：异能者从 D 级到 SSS 级的觉醒体系，每个等级解锁新能力..." spellcheck="false"></textarea>
+      <button id="btn-gen-power" class="btn btn-primary btn-lg">⚡ AI 构建体系</button>
+    </div>
+    <div id="power-result-area" class="char-result-area" style="display:none">
+      <div class="char-card" id="power-card">
+        <div class="char-card-header">
+          <span class="char-name" id="power-name">—</span>
+          <span class="char-badge" id="power-badge">—</span>
+        </div>
+        <div class="char-card-body" id="power-card-body">
+          <!-- AI 生成的体系框架渲染在这里 -->
+        </div>
+      </div>
+      <div class="char-actions">
+        <button id="btn-copy-power" class="btn btn-success">📋 复制体系</button>
+        <button id="btn-regenerate-power" class="btn btn-secondary">🔄 重新生成</button>
+      </div>
+    </div>
+    <div id="power-empty-state" class="char-empty-state">
+      <div class="char-empty-icon">⚡</div>
+      <p>输入体系设定，点击「AI 构建体系」开始创作</p>
     </div>
   </div>
 </main>
@@ -3811,6 +3849,167 @@ $('world-seed-input').addEventListener('keydown', function(e) {
 // 世界观视图切换
 $('nav-world-builder').addEventListener('click', function() {
   switchView('world-builder');
+});
+
+// ═══════════════════════════════════════
+//  16.75 体系工坊 · Power System Builder
+// ═══════════════════════════════════════
+
+var PROMPT_POWER_BUILDER = '你是一个专业的体系架构设计师，擅长构建各种力量体系、升级规则和能力框架。根据用户提供的一句话描述，构建一个完整、自洽、有层次的体系框架。\n\n' +
+  '请严格按照以下 JSON 格式输出，不要包含任何其他文字或 markdown 代码块标记：\n' +
+  '{\n' +
+  '  "name": "体系名称",\n' +
+  '  "badge": "一句话标签（如：九阶修仙·雷法专精 / D→SSS 异能觉醒）",\n' +
+  '  "type": "体系类型（修炼体系/异能体系/功法体系/血脉体系/装备体系/其他）",\n' +
+  '  "levels": "等级划分（从低到高列出所有等级，用 → 连接，如：练气→筑基→金丹→元婴→化神→渡劫→大乘）",\n' +
+  '  "mechanics": "核心机制（体系运行的核心规则，如突破方式、觉醒条件、升级所需资源等，100-200字）",\n' +
+  '  "extra": "其他补充内容（包含各等级详细描述、特殊能力分支、稀有变异路线、体系间的克制关系、相关传说或禁忌等，用自然段落描述，200-500字）"\n' +
+  '}\n\n' +
+  '要求：体系要有清晰的递进逻辑，每个等级要有明确的提升维度，核心机制要独特且有可玩性。extra 字段用于收纳所有无法归入上述字段的丰富细节。';
+
+async function generatePowerSystem() {
+  var seedInput = $('power-seed-input');
+  var seed = seedInput.value.trim();
+  if (!seed) {
+    setStatus('⚠️ 请先输入体系设定描述', 'err');
+    return;
+  }
+
+  var aiCfg = loadAIConfig();
+  if (!aiCfg || !aiCfg.endpoint || !aiCfg.key) {
+    setStatus('⚠️ 请先在右上角 [🤖 AI 配置] 中设置 API 端点和 Key', 'err');
+    return;
+  }
+
+  await withLoading('btn-gen-power', '⚡ AI 正在构建体系', async function() {
+    var response = await callAI(PROMPT_POWER_BUILDER, seed, true);
+
+    var powerData;
+    if (typeof response === 'string') {
+      var jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try { powerData = JSON.parse(jsonMatch[0]); } catch(e) { powerData = null; }
+      } else {
+        powerData = null;
+      }
+    } else {
+      powerData = response;
+    }
+
+    if (!powerData || !powerData.name) {
+      throw new Error('AI 返回的体系数据不完整，请重试');
+    }
+
+    renderPowerCard(powerData);
+
+    $('power-empty-state').style.display = 'none';
+    $('power-result-area').style.display = 'block';
+
+    setStatus('⚡ 体系「' + powerData.name + '」已构建完成', 'ok');
+  });
+}
+
+function renderPowerCard(data) {
+  $('power-name').textContent = data.name || '—';
+  $('power-badge').textContent = data.badge || data.type || '—';
+
+  var sections = [
+    { title: '🏷️ 体系类型', text: data.type },
+    { title: '📊 等级划分', text: data.levels },
+    { title: '⚙️ 核心机制', text: data.mechanics },
+  ];
+
+  var html = '';
+  sections.forEach(function(s) {
+    if (s.text) {
+      html += '<div class="char-section">';
+      html += '<div class="char-section-title">' + s.title + '</div>';
+      html += '<p>' + escapeHtml(s.text) + '</p>';
+      html += '</div>';
+    }
+  });
+
+  // 补充内容（折叠）
+  if (data.extra) {
+    html += '<div class="char-section">';
+    html += '<div class="char-section-title">📦 补充内容</div>';
+    html += '<div class="world-extra-toggle" id="power-extra-toggle">';
+    html += '  展开更多细节 <span class="arrow">▼</span>';
+    html += '</div>';
+    html += '<div class="world-extra-content" id="power-extra-content">';
+    html += '<p>' + escapeHtml(data.extra) + '</p>';
+    html += '</div>';
+    html += '</div>';
+  }
+
+  $('power-card-body').innerHTML = html;
+
+  // 折叠面板交互
+  var toggle = $('power-extra-toggle');
+  if (toggle) {
+    toggle.addEventListener('click', function() {
+      var content = $('power-extra-content');
+      var isOpen = content.classList.toggle('open');
+      toggle.innerHTML = isOpen ? '收起补充内容 <span class="arrow open">▲</span>' : '展开更多细节 <span class="arrow">▼</span>';
+    });
+  }
+
+  window._currentPowerData = data;
+}
+
+function copyPowerSystem() {
+  var data = window._currentPowerData;
+  if (!data) {
+    setStatus('⚠️ 没有可复制的体系档案', 'err');
+    return;
+  }
+
+  var SEP = '════════════════════════════════';
+  var text = SEP + '\n' +
+    '          ⚡ 体系档案\n' +
+    SEP + '\n\n' +
+    '【体系名称】' + (data.name || '—') + '\n' +
+    '【标签】' + (data.badge || '—') + '\n' +
+    '【类型】' + (data.type || '—') + '\n\n' +
+    '─── 等级划分 ───\n' + (data.levels || '—') + '\n\n' +
+    '─── 核心机制 ───\n' + (data.mechanics || '—') + '\n\n';
+
+  if (data.extra) {
+    text += '─── 补充内容 ───\n' + data.extra + '\n\n';
+  }
+
+  text += SEP + '\n' +
+    '由「尼可剧本工具 · 体系工坊」生成';
+
+  navigator.clipboard.writeText(text).then(function() {
+    setStatus('📋 体系档案已复制到剪贴板', 'ok');
+  }).catch(function() {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    setStatus('📋 体系档案已复制到剪贴板', 'ok');
+  });
+}
+
+// ── 体系工坊事件绑定 ──
+$('btn-gen-power').addEventListener('click', generatePowerSystem);
+$('btn-copy-power').addEventListener('click', copyPowerSystem);
+$('btn-regenerate-power').addEventListener('click', generatePowerSystem);
+
+// 回车触发生成
+$('power-seed-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    generatePowerSystem();
+  }
+});
+
+// 体系视图切换
+$('nav-power-builder').addEventListener('click', function() {
+  switchView('power-builder');
 });
 
 // ═══════════════════════════════════════
