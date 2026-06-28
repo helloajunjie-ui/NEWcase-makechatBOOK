@@ -45,6 +45,7 @@ function renderOutput() {
       case 'chunchao': result = renderChunchao(currentUIF); break;
       case 'fengyue':  result = renderFengyue(currentUIF);  break;
       case 'miss':     result = renderMiss(currentUIF);     break;
+      case 'rili':     result = renderRili(currentUIF);     break;
       default: result = '未知格式';
     }
     outputArea.value = result;

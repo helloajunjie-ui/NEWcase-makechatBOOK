@@ -273,6 +273,8 @@ function detectFormat(raw) {
   if (raw.promptData && typeof raw.promptData === 'object' && raw.promptData.systemPrompt) return 'miss';
   if (raw.name && (raw.pre_prompt || raw.world_book)) return 'fengyue';
   if (raw.name && raw.description && raw.tags) return 'fengyue';
+  // 日礼：顶层有 id(UUID) + authorId + title，无 work/name/promptData 等平台特征字段
+  if (raw.id && raw.authorId && raw.title && !raw.work && !raw.name && !raw.promptData) return 'rili';
   return null;
 }
 
@@ -437,6 +439,51 @@ function parseMiss(raw) {
   };
 }
 
+function parseRili(raw) {
+  return {
+    meta: {
+      title: raw.title || '未命名剧本',
+      summary: (raw.description || '').split('\n')[0].trim(),
+      description: raw.description || '',
+      language: raw.language || 'zh-Hans',
+      orientation: '通用',
+      tags: [],
+      source: 'rili',
+      exportedAt: raw.createdAt || null,
+    },
+    assets: {
+      coverUrl: raw.cover || null,
+      coverTinyUrl: null,
+      bgImageUrl: raw.background || null,
+      bgMobileUrl: null,
+      coverAnimated: false,
+    },
+    prompts: {
+      mainPrompt: raw.prompt || '',
+      suffixPrompt: '',
+      postText: '',
+      identityStyle: '',
+      worldview: '',
+      writingStyle: '',
+    },
+    worldBook: [],
+    landingPage: raw.introPage || '',
+    extras: {
+      customCss: raw.injectStyles || '',
+      quickCommands: [],
+      gameStateEnabled: false,
+      gameStateDesc: '',
+      gameStateExample: '',
+      nextOptionsEnabled: false,
+      nextPlotPrompt: '',
+      breakerText: '',
+      useCustomBreaker: false,
+      bannedWords: [],
+      suggestedQuestions: [],
+    },
+  };
+}
+
 // ═══════════════════════════════════════
 //  5. 世界书条目解析（平台无关）
 // ═══════════════════════════════════════
@@ -483,6 +530,7 @@ function parseJSON(raw) {
     case 'chunchao': uif = parseChunchao(raw); break;
     case 'fengyue':  uif = parseFengyue(raw);  break;
     case 'miss':     uif = parseMiss(raw);     break;
+    case 'rili':     uif = parseRili(raw);     break;
     default: throw new Error('不支持的格式: ' + fmt);
   }
   uif._sourceFormat = fmt;
@@ -573,6 +621,49 @@ function renderFengyue(uif) {
     shortcut_commands: extras.quickCommands, is_available_not_public: true,
     preset_type: 1, preset_chats: [],
     tags: meta.tags.map(t => ({ name: t, __isNew: true })),
+  }, null, 2);
+}
+
+function renderRili(uif) {
+  const { meta, assets, prompts, extras } = uif;
+  return JSON.stringify({
+    id: '',
+    authorId: '',
+    title: meta.title,
+    description: meta.description || null,
+    background: assets.bgImageUrl || null,
+    backgroundWidth: null,
+    backgroundHeight: null,
+    cover: assets.coverUrl || null,
+    coverWidth: null,
+    coverHeight: null,
+    introPage: uif.landingPage || '',
+    changelog: null,
+    createdAt: meta.exportedAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    initPublicAt: null,
+    prompt: prompts.mainPrompt || null,
+    promptSizeBytes: prompts.mainPrompt ? prompts.mainPrompt.length : null,
+    renderTemplate: null,
+    assistantRegexReplace: null,
+    enableMemorySchema: null,
+    memorySchema: null,
+    injectStyles: extras.customCss || null,
+    options: null,
+    language: meta.language || 'zh',
+    containsNSFW: null,
+    publicAccess: false,
+    deletedAt: null,
+    isAnonymous: null,
+    enableSafeguard: null,
+    defaultModelSettings: null,
+    totalConversations: 0,
+    totalPlayedUsers: 0,
+    deeplyPlayed: 0,
+    fixedPromptLength: 0,
+    lorebookLength: 0,
+    cardsTags: [],
+    cardsVoices: [],
   }, null, 2);
 }
 
