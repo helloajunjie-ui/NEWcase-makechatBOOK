@@ -1910,6 +1910,174 @@ $('nav-char-creator').addEventListener('click', function() {
   switchView('char-creator');
 });
 
+// ═══════════════════════════════════════
+//  16.5 世界观构建 · AI World Builder
+// ═══════════════════════════════════════
+
+var PROMPT_WORLD_BUILDER = '你是一个专业的世界观构建专家。根据用户提供的一句话世界设定，构建一个完整、自洽、有深度的世界观档案。\n\n' +
+  '请严格按照以下 JSON 格式输出，不要包含任何其他文字或 markdown 代码块标记：\n' +
+  '{\n' +
+  '  "name": "世界名称",\n' +
+  '  "badge": "一句话标签（如：灵气复苏·赛博修仙 / 废土冰河纪）",\n' +
+  '  "era": "时代背景（历史时期、纪元、年份）",\n' +
+  '  "geography": "地理环境（主要区域、地貌特征、气候）",\n' +
+  '  "laws": "核心法则（这个世界运行的底层规则、物理/魔法规律）",\n' +
+  '  "extra": "其他补充内容（包含主要势力、种族、科技体系、冲突危机、标志场景、氛围关键词等，用自然段落描述，200-500字）"\n' +
+  '}\n\n' +
+  '要求：世界观要有内在逻辑自洽性，核心法则要独特且有延展性，地理环境要服务于世界观氛围。extra 字段用于收纳所有无法归入上述字段的丰富细节。';
+
+async function generateWorld() {
+  var seedInput = $('world-seed-input');
+  var seed = seedInput.value.trim();
+  if (!seed) {
+    setStatus('⚠️ 请先输入世界设定描述', 'err');
+    return;
+  }
+
+  var aiCfg = loadAIConfig();
+  if (!aiCfg || !aiCfg.endpoint || !aiCfg.key) {
+    setStatus('⚠️ 请先在右上角 [🤖 AI 配置] 中设置 API 端点和 Key', 'err');
+    return;
+  }
+
+  await withLoading('btn-gen-world', '🌍 AI 正在构建世界观', async function() {
+    var response = await callAI(PROMPT_WORLD_BUILDER, seed, true);
+
+    var worldData;
+    if (typeof response === 'string') {
+      var jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try { worldData = JSON.parse(jsonMatch[0]); } catch(e) { worldData = null; }
+      } else {
+        worldData = null;
+      }
+    } else {
+      worldData = response;
+    }
+
+    if (!worldData || !worldData.name) {
+      throw new Error('AI 返回的世界观数据不完整，请重试');
+    }
+
+    renderWorldCard(worldData);
+
+    $('world-empty-state').style.display = 'none';
+    $('world-result-area').style.display = 'block';
+
+    setStatus('🌍 世界观「' + worldData.name + '」已构建完成', 'ok');
+  });
+}
+
+function renderWorldCard(data) {
+  $('world-name').textContent = data.name || '—';
+  $('world-badge').textContent = data.badge || '—';
+
+  // 通用字段（始终显示）
+  var sections = [
+    { title: '📖 时代背景', text: data.era },
+    { title: '🗺️ 地理环境', text: data.geography },
+    { title: '⚖️ 核心法则', text: data.laws },
+  ];
+
+  var html = '';
+  sections.forEach(function(s) {
+    if (s.text) {
+      html += '<div class="char-section">';
+      html += '<div class="char-section-title">' + s.title + '</div>';
+      html += '<p>' + escapeHtml(s.text) + '</p>';
+      html += '</div>';
+    }
+  });
+
+  // 补充内容（折叠）
+  if (data.extra) {
+    html += '<div class="char-section">';
+    html += '<div class="char-section-title">📦 补充内容</div>';
+    html += '<div class="world-extra-toggle" id="world-extra-toggle">';
+    html += '  展开更多细节 <span class="arrow">▼</span>';
+    html += '</div>';
+    html += '<div class="world-extra-content" id="world-extra-content">';
+    html += '<p>' + escapeHtml(data.extra) + '</p>';
+    html += '</div>';
+    html += '</div>';
+  }
+
+  $('world-card-body').innerHTML = html;
+
+  // 折叠面板交互
+  var toggle = $('world-extra-toggle');
+  if (toggle) {
+    toggle.addEventListener('click', function() {
+      var content = $('world-extra-content');
+      var arrow = toggle.querySelector('.arrow');
+      var isOpen = content.classList.toggle('open');
+      arrow.classList.toggle('open', isOpen);
+      toggle.textContent = isOpen ? '收起补充内容 ▲' : '展开更多细节 ▼';
+      // 重新插入箭头元素
+      var newArrow = document.createElement('span');
+      newArrow.className = 'arrow' + (isOpen ? ' open' : '');
+      newArrow.textContent = isOpen ? '▲' : '▼';
+      toggle.appendChild(newArrow);
+    });
+  }
+
+  window._currentWorldData = data;
+}
+
+function copyWorldProfile() {
+  var data = window._currentWorldData;
+  if (!data) {
+    setStatus('⚠️ 没有可复制的世界观档案', 'err');
+    return;
+  }
+
+  var SEP = '════════════════════════════════';
+  var text = SEP + '\n' +
+    '          🌍 世界观档案\n' +
+    SEP + '\n\n' +
+    '【世界名称】' + (data.name || '—') + '\n' +
+    '【标签】' + (data.badge || '—') + '\n\n' +
+    '─── 时代背景 ───\n' + (data.era || '—') + '\n\n' +
+    '─── 地理环境 ───\n' + (data.geography || '—') + '\n\n' +
+    '─── 核心法则 ───\n' + (data.laws || '—') + '\n\n';
+
+  if (data.extra) {
+    text += '─── 补充内容 ───\n' + data.extra + '\n\n';
+  }
+
+  text += SEP + '\n' +
+    '由「尼可剧本工具 · 世界观构建」生成';
+
+  navigator.clipboard.writeText(text).then(function() {
+    setStatus('📋 世界观档案已复制到剪贴板', 'ok');
+  }).catch(function() {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    setStatus('📋 世界观档案已复制到剪贴板', 'ok');
+  });
+}
+
+// ── 世界观构建事件绑定 ──
+$('btn-gen-world').addEventListener('click', generateWorld);
+$('btn-copy-world').addEventListener('click', copyWorldProfile);
+$('btn-regenerate-world').addEventListener('click', generateWorld);
+
+// 回车触发生成
+$('world-seed-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    generateWorld();
+  }
+});
+
+// 世界观视图切换
+$('nav-world-builder').addEventListener('click', function() {
+  switchView('world-builder');
+});
 
 // ═══════════════════════════════════════
 //  17. AI 铸造专属主题宣发页 (Generative UI Engine)

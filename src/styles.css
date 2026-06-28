@@ -1375,3 +1375,39 @@ a:hover{text-decoration:underline}
   font-size:15px;
   margin:0;
 }
+
+/* ── 世界观 · 折叠补充内容 ── */
+.world-extra-toggle{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  padding:10px;
+  margin-top:4px;
+  cursor:pointer;
+  color:var(--accent-primary);
+  font-size:13px;
+  font-weight:500;
+  border:1px dashed var(--border-color);
+  border-radius:var(--radius);
+  transition:var(--transition);
+  user-select:none;
+}
+.world-extra-toggle:hover{
+  background:var(--accent-glow);
+  border-color:var(--accent-primary);
+}
+.world-extra-toggle .arrow{
+  display:inline-block;
+  transition:transform .2s ease;
+}
+.world-extra-toggle .arrow.open{
+  transform:rotate(180deg);
+}
+.world-extra-content{
+  display:none;
+}
+.world-extra-content.open{
+  display:block;
+  animation:fadeIn 0.25s ease;
+}
