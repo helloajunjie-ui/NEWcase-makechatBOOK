@@ -1156,7 +1156,7 @@
   margin-bottom:24px;
 }
 .char-input-area .seed-textarea{
-  min-height:80px;
+  min-height:160px;
   resize:vertical;
 }
 .char-result-area{
