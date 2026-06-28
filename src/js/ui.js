@@ -674,9 +674,13 @@ fileInput.addEventListener('change', () => {
   const files = fileInput.files;
   if (!files || files.length === 0) return;
   if (batchMode) {
-    for (const f of files) addBatchFile(f);
+    for (const f of files) {
+      if (!f.name.endsWith('.json')) { setStatus('⚠️ 跳过非 JSON 文件: ' + f.name, 'err'); continue; }
+      addBatchFile(f);
+    }
   } else {
     const f = files[0];
+    if (!f.name.endsWith('.json')) { setStatus('⚠️ 请选择 JSON 文件', 'err'); fileInput.value = ''; return; }
     const reader = new FileReader();
     reader.onload = function(e) {
       jsonInput.value = e.target.result;
@@ -706,9 +710,13 @@ uploadZone.addEventListener('drop', e => {
   const files = e.dataTransfer.files;
   if (!files || files.length === 0) return;
   if (batchMode) {
-    for (const f of files) addBatchFile(f);
+    for (const f of files) {
+      if (!f.name.endsWith('.json')) { setStatus('⚠️ 跳过非 JSON 文件: ' + f.name, 'err'); continue; }
+      addBatchFile(f);
+    }
   } else {
     const f = files[0];
+    if (!f.name.endsWith('.json')) { setStatus('⚠️ 请拖入 JSON 文件', 'err'); return; }
     const reader = new FileReader();
     reader.onload = function(e) {
       jsonInput.value = e.target.result;
