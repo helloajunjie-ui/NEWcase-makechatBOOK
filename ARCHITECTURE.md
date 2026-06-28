@@ -55,8 +55,8 @@ node test_convert.js       # 运行测试
  春潮 JSON  ──→┐
  风月 JSON  ──→├──→  UIF (通用中间格式)  ──→  Markdown 存档
  MISS JSON  ──→┘                        ├──→  春潮 JSON
-                                        ├──→  风月 JSON
-                                        └──→  MISS JSON
+                                         ├──→  风月 JSON
+                                         └──→  MISS JSON
 ```
 
 **UIF（Universal Intermediate Format）** 是"唯一真相源"。所有平台格式先解析为 UIF，再从 UIF 渲染为目标格式。新平台出现时，只需新增一个解析器 + 一个渲染器，无需修改已有逻辑。
@@ -379,19 +379,208 @@ const genState = {
 
 ## 🔧 扩展指南
 
-### 添加新平台格式
+### 架构总览
 
-1. 在 [`src/main.js`](src/main.js) 的 `detectFormat()` 中添加格式检测
-2. 编写 `parseXxx(raw)` 解析器，返回 UIF 结构
-3. 编写 `renderXxx(uif)` 渲染器，从 UIF 生成目标 JSON
-4. 在 UI 的格式选择器中添加新选项
-5. 运行 `node build.js` 重新构建
+添加新平台格式的核心流程：
 
-### 解析器/渲染器开发规范
+```
+源格式 JSON  ──→  parseXxx()  ──→  UIF  ──→  renderXxx()  ──→  目标格式 JSON
+                     │                          │
+                     │  flexGet/flexStr/         │  Elegant Join
+                     │  flexArr/flexBool/        │  [A,B,C].filter(Boolean)
+                     │  flexNum 容错查找          │  .join('\n\n')
+                     ▼                          ▼
+                  UIF 结构体                  目标平台 JSON
+```
 
-- **解析器**：使用 `flexGet/flexStr/flexArr/flexBool/flexNum` 工具函数进行容错字段查找，支持多个备选 key 名
-- **渲染器**：提示词拼接统一使用 `[A, B, C].filter(Boolean).join('\n\n')` 模式
-- **世界书**：使用 `parseWorldBookEntries()` 统一处理，支持 `keywords`/`key`/`_or_@wb@` 三种关键词格式
+**只需写两个函数**（~70 行代码），无需修改任何已有逻辑。
+
+### 第一步：格式检测
+
+在 [`src/main.js`](src/main.js) 的 [`detectFormat()`](src/main.js:269) 中添加新平台的标识字段检测：
+
+```javascript
+function detectFormat(raw) {
+  if (raw.work && raw.work.prompt) return 'chunchao';
+  if (raw.pre_prompt && raw.title) return 'fengyue';
+  if (raw.promptData && raw.promptData.prompt) return 'miss';
+  // 新增：检测新平台格式
+  if (raw.xxxField && raw.yyyField) return 'xxx';
+  return null;
+}
+```
+
+### 第二步：编写解析器
+
+解析器将源 JSON 映射为 UIF 结构。使用 `flexGet/flexStr/flexArr/flexBool/flexNum` 工具函数进行容错字段查找，支持多个备选 key 名：
+
+```javascript
+function parseXxx(raw) {
+  return {
+    meta: {
+      title: flexStr(raw, 'title', 'name', 'scriptName'),
+      summary: flexStr(raw, 'summary', 'brief', 'shortDesc'),
+      description: flexStr(raw, 'description', 'desc', 'detailIntro'),
+      language: flexStr(raw, 'language', 'lang') || 'zh-CN',
+      orientation: flexStr(raw, 'orientation', 'gender') || '通用',
+      tags: flexArr(raw, 'tags', 'tagList', 'categories'),
+      source: 'xxx',
+      exportedAt: flexStr(raw, 'exportedAt', 'exported_at', 'createTime'),
+    },
+    assets: {
+      coverUrl: flexStr(raw, 'coverUrl', 'cover_url', 'cover'),
+      coverTinyUrl: flexStr(raw, 'coverTinyUrl', 'cover_tiny', 'thumb'),
+      bgImageUrl: flexStr(raw, 'bgImageUrl', 'bg_url', 'background'),
+      bgMobileUrl: flexStr(raw, 'bgMobileUrl', 'bg_mobile', 'bgMobile'),
+      coverAnimated: flexBool(raw, 'coverAnimated', 'animatedCover'),
+    },
+    prompts: {
+      mainPrompt: flexStr(raw, 'prompt', 'mainPrompt', 'systemPrompt', 'pre_prompt'),
+      suffixPrompt: flexStr(raw, 'suffixPrompt', 'suffix', 'postPrompt', 'post_prompt'),
+      postText: flexStr(raw, 'postText', 'post_text', 'afterword'),
+      identityStyle: flexStr(raw, 'identityStyle', 'identity_style', 'charStyle'),
+      worldview: flexStr(raw, 'worldview', 'worldView', 'world_bg'),
+      writingStyle: flexStr(raw, 'writingStyle', 'writing_style', 'style'),
+    },
+    worldBook: parseWorldBookEntries(
+      flexArr(raw, 'worldBook', 'world_book', 'entries', 'wb'),
+      'xxx'
+    ),
+    landingPage: flexStr(raw, 'description', 'detailIntro', 'intro', 'landingPage') || '',
+    extras: {
+      customCss: findCustomCss(raw),
+      quickCommands: flexArr(raw, 'quickCommands', 'quick_cmd', 'commands'),
+      gameStateEnabled: flexBool(raw, 'gameStateEnabled', 'stateEnabled'),
+      gameStateDesc: flexStr(raw, 'gameStateDesc', 'stateDesc', 'state_description'),
+      gameStateExample: flexStr(raw, 'gameStateExample', 'stateExample', 'state_example'),
+      nextOptionsEnabled: flexBool(raw, 'nextOptionsEnabled', 'nextEnabled'),
+      nextPlotPrompt: flexStr(raw, 'nextPlotPrompt', 'nextPrompt', 'next_plot'),
+      breakerText: flexStr(raw, 'breakerText', 'breaker_text', 'breakText'),
+      useCustomBreaker: flexBool(raw, 'useCustomBreaker', 'customBreaker'),
+      bannedWords: flexArr(raw, 'bannedWords', 'banned_words', 'blacklist'),
+      suggestedQuestions: flexArr(raw, 'suggestedQuestions', 'suggested_questions', 'starterQuestions'),
+    },
+    _raw: raw,
+    _sourceFormat: 'xxx',
+  };
+}
+```
+
+**关键原则：**
+- 所有字段查找使用 `flexGet` 系列函数，支持多个备选 key 名
+- 缺失字段返回 `null`/`''`/`[]`，**绝不抛异常**
+- `landingPage` 从源 JSON 的 HTML 字段提取（如 `description`、`detailIntro`）
+- `worldBook` 统一用 `parseWorldBookEntries()` 处理
+- `_raw` 保留原始 JSON，用于无损回渲
+
+### 第三步：编写渲染器
+
+渲染器从 UIF 生成目标平台的 JSON 格式。提示词拼接使用 **Elegant Join** 模式：
+
+```javascript
+function renderXxx(uif) {
+  var wb = uif.worldBook || [];
+  var meta = uif.meta || {};
+  var prompts = uif.prompts || {};
+  var assets = uif.assets || {};
+  var extras = uif.extras || {};
+
+  // Elegant Join：带标记的无损拼接
+  var mainPrompt = [prompts.mainPrompt,
+    prompts.worldview ? '[世界观设定: ' + prompts.worldview + ']' : ''
+  ].filter(Boolean).join('\n\n');
+
+  var suffixPrompt = [prompts.suffixPrompt,
+    prompts.postText ? '[后置规则: ' + prompts.postText + ']' : '',
+    prompts.identityStyle ? '[角色风格设定: ' + prompts.identityStyle + ']' : ''
+  ].filter(Boolean).join('\n\n');
+
+  return JSON.stringify({
+    title: meta.title,
+    description: meta.description,
+    language: meta.language,
+    orientation: meta.orientation,
+    tags: meta.tags.map(function(t) { return { name: t }; }),
+    cover_url: assets.coverUrl,
+    bg_url: assets.bgImageUrl,
+    custom_css: extras.customCss,
+    pre_prompt: mainPrompt,
+    post_text: suffixPrompt,
+    world_book: wb.map(function(e, i) {
+      return {
+        key: e.keywords || [],
+        content: e.content || '',
+        weight: e.weight || 0,
+        enabled: e.enabled !== false,
+      };
+    }),
+    exported_at: meta.exportedAt,
+  }, null, 2);
+}
+```
+
+**关键原则：**
+- 提示词拼接统一使用 `[A, B, C].filter(Boolean).join('\n\n')` 模式
+- 标记前缀（`[世界观设定:]`、`[角色风格设定:]`）确保拼接后的内容可逆解析
+- 世界书渲染时注意平台字段名差异（`keywords` vs `key`）
+- 缺失字段用 `||` 提供默认值
+
+### 第四步：注册到输出路由
+
+在 [`renderOutput()`](src/main.js:749) 中添加新格式的渲染调用：
+
+```javascript
+function renderOutput() {
+  var fmt = getSelectedFormat();
+  var uif = currentUIF;
+  if (!uif) return;
+
+  var output;
+  switch (fmt) {
+    case 'markdown': output = renderMarkdown(uif); break;
+    case 'chunchao': output = renderChunchao(uif); break;
+    case 'fengyue':  output = renderFengyue(uif);  break;
+    case 'miss':     output = renderMiss(uif);     break;
+    case 'xxx':      output = renderXxx(uif);      break;  // 新增
+  }
+  // ... 显示输出
+}
+```
+
+同时在 HTML 模板的格式选择器（[`src/template.html:68`](src/template.html:68)）中添加新选项：
+
+```html
+<label><input type="radio" name="format" value="xxx"> XXX 格式</label>
+```
+
+### 代码量参考
+
+| 平台 | 解析器行数 | 渲染器行数 | 合计 |
+|------|-----------|-----------|------|
+| 春潮 | ~45 行 | ~25 行 | ~70 行 |
+| 风月 | ~44 行 | ~23 行 | ~67 行 |
+| MISS | ~45 行 | ~21 行 | ~66 行 |
+| **新增** | **~45 行** | **~25 行** | **~70 行** |
+
+### 测试验证
+
+新增平台后，在 [`test_convert.js`](test_convert.js) 中添加测试样本：
+
+```javascript
+const testFiles = [
+  { path: '【春潮】全息韩国真实生活模拟器-20260628.json', format: 'chunchao' },
+  { path: '[风月]穿成阿龙，但这次鱼人说了算-20260628-104717.json', format: 'fengyue' },
+  { path: '【MISS】海拉鲁悲歌交响.json', format: 'miss' },
+  { path: '【新平台】示例剧本.json', format: 'xxx' },  // 新增
+];
+```
+
+运行测试验证：
+```bash
+node test_convert.js       # 应显示 36/36 通过（原 27 + 新 9）
+node audit_mapping.js      # 应显示 ~100 项字段映射通过
+node build.js              # 重新构建 index.html
+```
 
 ---
 
