@@ -807,6 +807,10 @@ a:hover{text-decoration:underline}
    视图 3：剧本车间 · 4 步向导
    ═══════════════════════════════════════ */
 
+#view-char-creator.active{
+  display:flex !important;
+  overflow-y:auto;
+}
 #view-generator.active{
   display:flex !important;
 }
