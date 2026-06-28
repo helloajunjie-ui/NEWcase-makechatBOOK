@@ -1076,6 +1076,87 @@ a:hover{text-decoration:underline}
 }
 .refine-actions .btn{flex:1}
 
+/* ── 素材导入 & 主角确认 & 世界书迭代 ── */
+.refine-section{
+  background:var(--bg-panel);
+  border:1px solid var(--border-color);
+  border-radius:var(--radius-lg);
+  overflow:hidden;
+}
+.refine-section-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 16px;
+  font-size:14px;
+  font-weight:600;
+  background:var(--bg-hover);
+  user-select:none;
+}
+.refine-toggle-icon{
+  font-size:11px;
+  color:var(--text-dim);
+  transition:transform .2s;
+}
+.refine-section-header.open .refine-toggle-icon{
+  transform:rotate(180deg);
+}
+.refine-section-body{
+  padding:12px 16px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.material-hint{
+  font-size:12px;
+  color:var(--text-dim);
+  line-height:1.5;
+}
+.material-buttons{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.imported-materials{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.imported-material-item{
+  font-size:13px;
+  padding:8px 12px;
+  background:var(--bg-body);
+  border-radius:var(--radius-sm);
+  border-left:3px solid var(--accent-primary);
+  line-height:1.5;
+}
+.imported-material-item .mat-label{
+  font-weight:600;
+  color:var(--accent-primary);
+  font-size:11px;
+  display:block;
+  margin-bottom:2px;
+}
+.refine-input{
+  width:100%;
+  padding:10px 12px;
+  border:1px solid var(--border-color);
+  border-radius:var(--radius-sm);
+  background:var(--bg-body);
+  color:var(--text-main);
+  font-size:14px;
+  font-family:inherit;
+  outline:none;
+  transition:border-color .2s;
+}
+.refine-input:focus{
+  border-color:var(--accent-primary);
+}
+.refine-hint{
+  font-size:12px;
+  color:var(--text-dim);
+}
+
 /* ── Step 3: 提示词生成 ── */
 .prompt-gen-area{
   max-width:800px;

@@ -1824,6 +1824,9 @@ async function generateCharacter() {
       throw new Error('AI 返回的人物数据不完整，请重试');
     }
 
+    // 保存到 localStorage 供剧本车间导入
+    try { localStorage.setItem('_last_char_result', JSON.stringify(charData)); } catch(e) {}
+
     // 渲染人物卡片
     renderCharacterCard(charData);
 
@@ -1981,6 +1984,9 @@ async function generateWorld() {
     if (!worldData || !worldData.name) {
       throw new Error('AI 返回的世界观数据不完整，请重试');
     }
+
+    // 保存到 localStorage 供剧本车间导入
+    try { localStorage.setItem('_last_world_result', JSON.stringify(worldData)); } catch(e) {}
 
     renderWorldCard(worldData);
 
@@ -2150,6 +2156,9 @@ async function generatePowerSystem() {
     if (!powerData || !powerData.name) {
       throw new Error('AI 返回的体系数据不完整，请重试');
     }
+
+    // 保存到 localStorage 供剧本车间导入
+    try { localStorage.setItem('_last_power_result', JSON.stringify(powerData)); } catch(e) {}
 
     renderPowerCard(powerData);
 
@@ -2450,6 +2459,9 @@ const genState = {
   selectedDraft: null, // 选中的卡片对象
   prompts: null,    // Step 3 生成的提示词 { systemPrompt, outline, expanded }
   worldBook: [],    // Step 4 萃取的世界书
+  // 新增：素材导入 & 主角
+  materials: [],    // 导入的素材 [{ type, label, content }]
+  protagonist: '',  // 玩家扮演角色
 };
 
 // ── withLoading: 通用 UX 加载包装器 ──
@@ -2651,13 +2663,122 @@ const PROMPT_EXPAND = '你是一位顶级的 AI 提示词工程师（Prompt Engi
   '- 使用第二人称"你"贯穿全文\n' +
   '- 直接输出 System Prompt 内容，不要额外解释，不要 markdown 包裹';
 
+// ── Step 2: 素材导入 ──
+// 从捏人/世界观/体系工具的结果中导入素材
+function getLastResult(storageKey) {
+  try {
+    var raw = localStorage.getItem(storageKey);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+function importMaterial(type, label) {
+  var storageKey = '';
+  if (type === 'char') storageKey = '_last_char_result';
+  else if (type === 'world') storageKey = '_last_world_result';
+  else if (type === 'power') storageKey = '_last_power_result';
+  else return;
+
+  var data = getLastResult(storageKey);
+  if (!data) {
+    setStatus('⚠️ 没有找到已生成的' + label + '，请先在对应工具中生成', 'err');
+    return;
+  }
+
+  // 检查是否已导入相同类型
+  if (genState.materials.some(function(m) { return m.type === type; })) {
+    setStatus('⚠️ ' + label + ' 已导入，如需更新请先清除', 'err');
+    return;
+  }
+
+  var content = '';
+  if (typeof data === 'object') {
+    // 将对象展平为可读文本
+    Object.keys(data).forEach(function(k) {
+      var v = data[k];
+      if (Array.isArray(v)) {
+        content += k + '：' + v.join('、') + '\n';
+      } else if (typeof v === 'object' && v !== null) {
+        content += k + '：\n';
+        Object.keys(v).forEach(function(sk) {
+          var sv = v[sk];
+          if (typeof sv === 'string') content += '  ' + sk + '：' + sv + '\n';
+        });
+      } else if (typeof v === 'string') {
+        content += k + '：' + v + '\n';
+      }
+    });
+  } else {
+    content = String(data);
+  }
+
+  genState.materials.push({ type: type, label: label, content: content });
+  renderImportedMaterials();
+  setStatus('✅ 已导入' + label, 'ok');
+}
+
+function renderImportedMaterials() {
+  var container = $('gen-imported-materials');
+  if (!container) return;
+  if (genState.materials.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+  container.innerHTML = genState.materials.map(function(m) {
+    return '<div class="imported-material-item">' +
+      '<span class="mat-label">' + escapeHtml(m.label) + '</span>' +
+      escapeHtml(m.content.slice(0, 120)) + (m.content.length > 120 ? '...' : '') +
+      '</div>';
+  }).join('');
+}
+
+// 素材导入按钮
+$('btn-import-char').addEventListener('click', function() { importMaterial('char', '🧑 捏人'); });
+$('btn-import-world').addEventListener('click', function() { importMaterial('world', '🌍 世界观'); });
+$('btn-import-power').addEventListener('click', function() { importMaterial('power', '⚡ 体系'); });
+
+// 素材区折叠切换
+var toggleMaterials = $('toggle-materials');
+if (toggleMaterials) {
+  toggleMaterials.addEventListener('click', function() {
+    var body = $('gen-materials-area');
+    if (body) {
+      var isHidden = body.style.display === 'none';
+      body.style.display = isHidden ? '' : 'none';
+      toggleMaterials.classList.toggle('open', isHidden);
+    }
+  });
+  // 默认折叠
+  var matBody = $('gen-materials-area');
+  if (matBody) matBody.style.display = 'none';
+}
+
 $('btn-to-step-3').addEventListener('click', function() {
   if (!genState.selectedDraft) return;
+
+  // 保存主角输入
+  var protoInput = $('gen-protagonist-input');
+  if (protoInput) {
+    genState.protagonist = protoInput.value.trim();
+  }
 
   withLoading('btn-to-step-3', '📝 AI 正在膨胀提示词', async function() {
     var card = genState.selectedDraft;
     var userMsg = '剧本标题：' + card.title + '\n核心冲突：' + card.conflict +
       '\n详细设定：' + card.desc + '\n标签：' + (card.tags || []).join('、');
+
+    // 追加素材上下文
+    if (genState.materials.length > 0) {
+      userMsg += '\n\n【玩家提供的素材】\n';
+      genState.materials.forEach(function(m) {
+        userMsg += '--- ' + m.label + ' ---\n' + m.content + '\n';
+      });
+    }
+
+    // 追加主角身份
+    if (genState.protagonist) {
+      userMsg += '\n【玩家扮演角色】\n' + genState.protagonist + '\n';
+    }
 
     var expandedPrompt = await callAI(PROMPT_EXPAND, userMsg, false);
 
@@ -2709,6 +2830,23 @@ $('btn-regenerate-prompt').addEventListener('click', function() {
 });
 
 // ── Step 3 → Step 4: 萃取世界书 ──
+function renderWorldBookList() {
+  var list = $('gen-wb-list');
+  if (!list) return;
+  list.innerHTML = '';
+  if (genState.worldBook.length === 0) {
+    list.innerHTML = '<div class="cards-placeholder">未萃取到世界书条目</div>';
+  } else {
+    genState.worldBook.forEach(function(wb) {
+      var div = document.createElement('div');
+      div.className = 'gen-wb-item';
+      div.innerHTML = '<div class="wb-keywords">🔑 ' + escapeHtml((wb.keywords || []).join('、')) + '</div>' +
+        '<div class="wb-content">' + escapeHtml(wb.content || '') + '</div>';
+      list.appendChild(div);
+    });
+  }
+}
+
 $('btn-to-step-4').addEventListener('click', function() {
   var promptText = genState.prompts ? (genState.prompts.systemPrompt || genState.prompts.expanded) : '';
   if (!promptText) {
@@ -2721,24 +2859,23 @@ $('btn-to-step-4').addEventListener('click', function() {
       '每条包含：keywords（触发关键词数组，3-5个词）、content（条目内容，50-100字）。' +
       '以 JSON 数组格式返回，不要 markdown 包裹。格式：[{"keywords":["关键词1","关键词2"],"content":"条目内容"}]';
 
-    var wbResult = await callAI(systemPrompt, promptText, true);
-    var wbList = Array.isArray(wbResult) ? wbResult : [];
-    genState.worldBook = wbList;
-
-    var list = $('gen-wb-list');
-    list.innerHTML = '';
-    if (wbList.length === 0) {
-      list.innerHTML = '<div class="cards-placeholder">未萃取到世界书条目</div>';
-    } else {
-      wbList.forEach(function(wb) {
-        var div = document.createElement('div');
-        div.className = 'gen-wb-item';
-        div.innerHTML = '<div class="wb-keywords">🔑 ' + escapeHtml((wb.keywords || []).join('、')) + '</div>' +
-          '<div class="wb-content">' + escapeHtml(wb.content || '') + '</div>';
-        list.appendChild(div);
+    // 注入主角和素材上下文
+    var contextMsg = promptText;
+    if (genState.protagonist) {
+      contextMsg += '\n\n【玩家扮演角色】\n' + genState.protagonist;
+    }
+    if (genState.materials.length > 0) {
+      contextMsg += '\n\n【玩家提供的素材】\n';
+      genState.materials.forEach(function(m) {
+        contextMsg += '--- ' + m.label + ' ---\n' + m.content + '\n';
       });
     }
 
+    var wbResult = await callAI(systemPrompt, contextMsg, true);
+    var wbList = Array.isArray(wbResult) ? wbResult : [];
+    genState.worldBook = wbList;
+
+    renderWorldBookList();
     goToStep(4);
     setStatus('✅ 世界书萃取完成：' + wbList.length + ' 条', 'ok');
   });
@@ -2754,6 +2891,120 @@ $('btn-regenerate-wb').addEventListener('click', function() {
   $('btn-to-step-4').click();
 });
 
+// ── Step 4: 世界书迭代 ──
+// 玩家可追加指令，AI 增量生成新条目合并到现有世界书
+$('btn-iterate-wb').addEventListener('click', function() {
+  var iterateInput = $('gen-wb-iterate-input');
+  var instruction = iterateInput ? iterateInput.value.trim() : '';
+  if (!instruction) {
+    setStatus('请输入要追加的内容描述', 'err');
+    return;
+  }
+
+  withLoading('btn-iterate-wb', '🚀 AI 正在追加世界书', async function() {
+    var promptText = genState.prompts ? (genState.prompts.systemPrompt || genState.prompts.expanded) : '';
+
+    var systemPrompt = '你是一个世界书构建专家。当前已有一些世界书条目，根据用户的追加指令，生成新的世界书条目。' +
+      '每条包含：keywords（触发关键词数组，3-5个词）、content（条目内容，50-100字）。' +
+      '以 JSON 数组格式返回，不要 markdown 包裹。格式：[{"keywords":["关键词1","关键词2"],"content":"条目内容"}]';
+
+    var userMsg = '【剧本核心设定】\n' + promptText.slice(0, 800) + '\n\n';
+    if (genState.protagonist) {
+      userMsg += '【玩家扮演角色】\n' + genState.protagonist + '\n\n';
+    }
+    userMsg += '【已有世界书条目】\n';
+    genState.worldBook.forEach(function(wb, i) {
+      userMsg += (i + 1) + '. ' + (wb.keywords || []).join('、') + ' → ' + (wb.content || '').slice(0, 60) + '\n';
+    });
+    userMsg += '\n【追加指令】\n' + instruction;
+
+    var wbResult = await callAI(systemPrompt, userMsg, true);
+    var newEntries = Array.isArray(wbResult) ? wbResult : [];
+    if (newEntries.length === 0) {
+      setStatus('⚠️ AI 未生成新条目，请调整指令重试', 'err');
+      return;
+    }
+
+    // 合并到现有世界书
+    genState.worldBook = genState.worldBook.concat(newEntries);
+    renderWorldBookList();
+
+    // 清空输入
+    if (iterateInput) iterateInput.value = '';
+    setStatus('✅ 已追加 ' + newEntries.length + ' 条世界书条目（共 ' + genState.worldBook.length + ' 条）', 'ok');
+  });
+});
+
+// ── Step 4: 折叠/展开世界书迭代区 ──
+var toggleWbIterate = $('toggle-wb-iterate');
+if (toggleWbIterate) {
+  toggleWbIterate.addEventListener('click', function() {
+    var body = $('gen-wb-iterate-area');
+    if (body) {
+      var isHidden = body.style.display === 'none';
+      body.style.display = isHidden ? '' : 'none';
+      toggleWbIterate.classList.toggle('open', isHidden);
+    }
+  });
+  // 默认折叠
+  var wbIterateBody = $('gen-wb-iterate-area');
+  if (wbIterateBody) wbIterateBody.style.display = 'none';
+}
+
+// ── Step 4: 向导内生成宣发页 ──
+$('btn-gen-html-from-wizard').addEventListener('click', function() {
+  if (!genState.selectedDraft || !genState.prompts) {
+    setStatus('请先完成提示词生成', 'err');
+    return;
+  }
+
+  // 检查 AI 配置
+  var aiCfg = loadAIConfig();
+  if (!aiCfg || !aiCfg.endpoint || !aiCfg.key) {
+    setStatus('⚠️ 请先在右上角 [🤖 AI 配置] 中设置 API 端点和 Key', 'err');
+    return;
+  }
+
+  withLoading('btn-gen-html-from-wizard', '🌐 AI 正在铸造宣发页', async function() {
+    var card = genState.selectedDraft;
+    var promptText = genState.prompts.systemPrompt || genState.prompts.expanded || '';
+    var protagonist = genState.protagonist || '';
+
+    // 构建用户消息
+    var userMsg = '剧本标题：' + (card.title || '') + '\n';
+    if (protagonist) userMsg += '玩家扮演角色：' + protagonist + '\n';
+    userMsg += '背景简介：' + (card.desc || '') + '\n';
+    userMsg += '核心提示词：' + promptText.slice(0, 500) + '\n';
+
+    // 世界书摘要
+    if (genState.worldBook.length > 0) {
+      userMsg += '世界书摘要：' + genState.worldBook.map(function(wb) {
+        return wb.keywords ? wb.keywords.slice(0, 3).join('/') : '条目';
+      }).join(', ') + '\n';
+    }
+
+    var response = await callAI(PROMPT_LANDING_PAGE, userMsg, false);
+    var htmlContent = response.replace(/^```html\s*/i, '').replace(/```\s*$/i, '').trim();
+
+    if (!/<!DOCTYPE\s+html/i.test(htmlContent)) {
+      if (htmlContent.indexOf('<html') === -1) {
+        htmlContent = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' +
+          escapeHtml(card.title || '剧本') + ' - 专属宣发页</title></head><body>' + htmlContent + '</body></html>';
+      }
+    }
+
+    // 预览
+    var blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+
+    // 暂存到 genState 供保存时入库
+    genState._landingPage = htmlContent;
+
+    setStatus('🎉 宣发页已生成，保存剧本时将一并入库', 'ok');
+  });
+});
+
 // ── Step 4: 保存剧本（File System Access 物理写入 + IndexedDB 回退） ──
 // 优先写入挂载的物理文件夹，回退到 IndexedDB
 $('btn-save-script').addEventListener('click', function() {
@@ -2766,7 +3017,7 @@ $('btn-save-script').addEventListener('click', function() {
     var card = genState.selectedDraft;
     var promptText = genState.prompts.systemPrompt || genState.prompts.expanded || '';
 
-    // 构建 UIF 格式剧本
+    // 构建 UIF 格式剧本（含主角信息和宣发页）
     var script = {
       meta: {
         title: card.title || '未命名剧本',
@@ -2775,6 +3026,7 @@ $('btn-save-script').addEventListener('click', function() {
         tags: card.tags || [],
         source: 'generator',
         exportedAt: new Date().toISOString(),
+        protagonist: genState.protagonist || '',  // 保存主角信息
       },
       prompts: {
         mainPrompt: promptText,
@@ -2787,6 +3039,7 @@ $('btn-save-script').addEventListener('click', function() {
           enabled: true,
         };
       }),
+      landingPage: genState._landingPage || '',  // 保存宣发页
     };
 
     var fileName = (card.title || '剧本') + '.json';
@@ -2803,12 +3056,22 @@ $('btn-save-script').addEventListener('click', function() {
         return;
       } catch (fsaError) {
         console.warn('FSA 写入失败，回退到 IndexedDB:', fsaError);
-        // 回退到 IndexedDB
       }
     }
 
-    // 策略 2: IndexedDB 回退
-    await dbAdd(script);
+    // 策略 2: IndexedDB 回退（含宣发页）
+    var dbEntry = {
+      uif: script,
+      title: card.title || '未命名剧本',
+      summary: card.conflict || '',
+      sourceFormat: 'generator',
+      tags: card.tags || [],
+      worldBookCount: genState.worldBook.length,
+      promptLength: promptText.length,
+      htmlLandingPage: genState._landingPage || '',
+      createdAt: Date.now(),
+    };
+    await dbAdd(dbEntry);
     setStatus('💾 已保存到剧本库：' + fileName, 'ok');
 
     // 刷新剧本库列表
